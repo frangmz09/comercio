@@ -1,0 +1,17 @@
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Entorno local (nunca secretos reales en el repo)
+.env
