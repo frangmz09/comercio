@@ -8,6 +8,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # El contexto `secrets` no esta disponible en el `if` de un step, pero `env` si:
+    # subirlo a nivel de job es lo que permite saltear Sonar cuando el token no esta cargado.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,10 +34,9 @@ jobs:
         run: ./mvnw -B verify
 
       - name: Analisis SonarCloud
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        if: env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./mvnw -B sonar:sonar
 
       - name: Publicar reportes de test
