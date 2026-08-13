@@ -1,3 +1,8 @@
+# Las comillas son necesarias: YAML reserva '@' al inicio de un escalar plano.
+# spring-boot-starter-parent filtra este archivo y reemplaza el token por la version del pom.
+app:
+  version: '@project.version@'
+
 spring:
   application:
     name: comercio-core
