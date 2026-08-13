@@ -54,8 +54,11 @@ class PrecioVigenciaIT {
 
     @Test
     void asignarUnPrecioNuevoCierraLaVigenciaDelAnterior() {
-        Instant ayer = Instant.now().minus(1, ChronoUnit.DAYS);
-        Instant ahora = Instant.now();
+        // Truncados a microsegundos porque es la precisión que guarda timestamptz: la
+        // entidad trunca al entrar, así que comparar contra un Instant con nanosegundos
+        // fallaría por una diferencia que la base nunca podría representar.
+        Instant ayer = Instant.now().minus(1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.MICROS);
+        Instant ahora = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
         Precio viejo = precioService.asignar(productoId, listaId, new BigDecimal("1000.00"), ayer);
         precioService.asignar(productoId, listaId, new BigDecimal("1200.00"), ahora);

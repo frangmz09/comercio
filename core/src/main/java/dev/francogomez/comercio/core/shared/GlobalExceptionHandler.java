@@ -1,12 +1,14 @@
 package dev.francogomez.comercio.core.shared;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -49,6 +51,31 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST, "El cuerpo de la petición no es JSON válido", req);
+    }
+
+    /**
+     * Falta un header obligatorio (por ejemplo {@code Idempotency-Key} al registrar una
+     * venta). Es un error del cliente, no del servidor.
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiError> handleHeaderFaltante(MissingRequestHeaderException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST,
+                "Falta el header obligatorio '%s'".formatted(ex.getHeaderName()), req);
+    }
+
+    /** Validaciones sobre parámetros y headers, que no pasan por el binding del body. */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleViolaciones(ConstraintViolationException ex, HttpServletRequest req) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        ex.getConstraintViolations().forEach(v ->
+                errors.put(String.valueOf(v.getPropertyPath()), v.getMessage()));
+
+        ApiError body = ApiError.validation(
+                HttpStatus.BAD_REQUEST.value(),
+                "Uno o más parámetros no son válidos",
+                req.getRequestURI(),
+                errors);
+        return ResponseEntity.badRequest().body(body);
     }
 
     @ExceptionHandler(Exception.class)

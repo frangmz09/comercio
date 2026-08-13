@@ -13,6 +13,7 @@ import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -61,8 +62,18 @@ public class Precio {
         this.producto = producto;
         this.lista = lista;
         this.monto = monto;
-        this.vigenciaDesde = vigenciaDesde;
+        this.vigenciaDesde = truncar(vigenciaDesde);
         this.creadoEn = Instant.now();
+    }
+
+    /**
+     * Instant maneja nanosegundos pero timestamptz de Postgres guarda microsegundos, así
+     * que al persistir el valor se redondea. Truncar en el borde de entrada evita que el
+     * objeto en memoria difiera del que quedó en la base: sin esto, comparar una vigencia
+     * recién asignada contra la releída falla por 100 nanosegundos.
+     */
+    private static Instant truncar(Instant momento) {
+        return momento.truncatedTo(ChronoUnit.MICROS);
     }
 
     /**
@@ -70,11 +81,12 @@ public class Precio {
      * rangos son semiabiertos, el borde compartido no genera solapamiento.
      */
     public void cerrarEn(Instant momento) {
-        if (!momento.isAfter(vigenciaDesde)) {
+        Instant cierre = truncar(momento);
+        if (!cierre.isAfter(vigenciaDesde)) {
             throw new IllegalArgumentException(
                     "No se puede cerrar un precio en un instante anterior o igual a su inicio de vigencia");
         }
-        this.vigenciaHasta = momento;
+        this.vigenciaHasta = cierre;
     }
 
     public boolean estaVigenteEn(Instant momento) {

@@ -30,6 +30,10 @@ public record VentaConfirmada(
 
     public static final int CURRENT_SCHEMA_VERSION = 1;
 
-    public record Linea(String sku, int cantidad, BigDecimal precioUnitario) {
+    /**
+     * La cantidad es decimal, no entera: el catálogo admite unidades de medida como el
+     * kilo, donde vender 0,750 es lo normal.
+     */
+    public record Linea(String sku, BigDecimal cantidad, BigDecimal precioUnitario) {
     }
 }
