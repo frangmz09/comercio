@@ -73,6 +73,16 @@ original — nunca editando o borrando lo ya emitido.
 **Reportes.** Ventas por día y productos más vendidos, proyectados desde los eventos.
 Son eventualmente consistentes: una venta recién registrada tarda un instante en aparecer.
 
+## Demo pública
+
+La API transaccional está desplegada en Render, con Swagger navegable. Corre sobre una
+instancia gratuita que se duerme tras 15 minutos sin tráfico: **el primer request después
+de un rato puede tardar cerca de un minuto** mientras el contenedor vuelve a levantar.
+
+Ahí solo vive `core`. `reportes` necesita Kafka, y no hay un Kafka gestionado gratuito
+que se sostenga en el tiempo, así que el sistema completo —los dos servicios, Kafka,
+Prometheus y Grafana— se levanta local con un comando.
+
 ## Cómo correrlo
 
 Requiere Docker.

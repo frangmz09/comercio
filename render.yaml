@@ -1,0 +1,46 @@
+# Blueprint de Render para la demo publica.
+#
+# Solo se despliega `core`. `reportes` necesita Kafka, y no existe un Kafka gestionado
+# gratuito que se sostenga en el tiempo: el sistema completo se levanta con
+# `docker compose up`. Lo que vive en Render es la API transaccional con su Swagger.
+#
+# La base NO se define aca a proposito. Las bases gratuitas de Render expiran a los 30
+# dias de creadas y despues se eliminan, lo que romperia la demo justo cuando importa.
+# Se usa una base externa (Neon tiene free tier sin vencimiento) y se cargan las
+# credenciales como variables de entorno.
+
+services:
+  - type: web
+    name: comercio-core
+    runtime: docker
+    plan: free
+    region: oregon
+
+    dockerfilePath: ./core/Dockerfile
+    # El contexto es la raiz del repo: el Dockerfile compila el monorepo entero.
+    dockerContext: .
+
+    # Render espera 200 aca antes de dar por vivo el deploy.
+    healthCheckPath: /actuator/health/readiness
+
+    autoDeploy: true
+
+    envVars:
+      # sync:false = se cargan a mano en el panel y no viajan en el repositorio.
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+
+      # Sin Kafka al que publicar, el publisher fallaria cada segundo y llenaria los
+      # logs. Los eventos igual se escriben en la tabla outbox dentro de la transaccion:
+      # la garantia transaccional se mantiene, solo queda sin drenar.
+      - key: COMERCIO_OUTBOX_ENABLED
+        value: "false"
+
+      # La instancia gratuita tiene 512 MB. Por defecto la JVM toma apenas el 25% para
+      # el heap; con este porcentaje aprovecha el contenedor sin que el kernel la mate.
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=75.0"
