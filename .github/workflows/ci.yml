@@ -33,8 +33,15 @@ jobs:
       - name: Build, tests unitarios y de integracion (Testcontainers), cobertura
         run: ./mvnw -B verify
 
+      # continue-on-error: el analisis es un informe, no una compuerta de merge. Que el
+      # build compile y los tests pasen es una afirmacion sobre el codigo; que SonarCloud
+      # este disponible y el token siga vigente son condiciones de un servicio externo.
+      # Mezclarlas hace que una caida ajena deje el repositorio en rojo, y un badge rojo
+      # que en realidad no significa nada roto es peor que no tener badge.
+      # El estado del quality gate se ve en su propio badge en el README.
       - name: Analisis SonarCloud
         if: env.SONAR_TOKEN != ''
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw -B sonar:sonar

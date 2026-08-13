@@ -1,6 +1,8 @@
 # comercio
 
 [![CI](https://github.com/frangmz09/comercio/actions/workflows/ci.yml/badge.svg)](https://github.com/frangmz09/comercio/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=frangmz09_comercio&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=frangmz09_comercio)
+[![Cobertura](https://sonarcloud.io/api/project_badges/measure?project=frangmz09_comercio&metric=coverage)](https://sonarcloud.io/summary/new_code?id=frangmz09_comercio)
 [![Demo](https://img.shields.io/badge/demo-swagger-85ea2d?logo=swagger&logoColor=white)](https://comercio-core.onrender.com/swagger-ui)
 
 Core transaccional de un comercio minorista: catálogo, precios con vigencia temporal,
