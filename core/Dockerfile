@@ -2,9 +2,13 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 
+# Se copian los pom de todos los modulos, no solo los que se compilan: el reactor de
+# Maven lee el pom padre entero y falla si falta el descriptor de alguno de sus modulos,
+# aunque despues no se construya.
 COPY pom.xml .
 COPY contratos/pom.xml contratos/pom.xml
 COPY core/pom.xml core/pom.xml
+COPY reportes/pom.xml reportes/pom.xml
 RUN mvn -q -pl core -am -DskipTests dependency:go-offline
 
 COPY contratos/src contratos/src

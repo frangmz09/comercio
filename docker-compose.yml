@@ -24,7 +24,8 @@ services:
       POSTGRES_USER: comercio
       POSTGRES_PASSWORD: comercio
     ports:
-      - "5433:5432"
+      # 5434 y no 5433 para no chocar con otros Postgres que suelen ocupar ese puerto.
+      - "5434:5432"
     volumes:
       - postgres-reportes-data:/var/lib/postgresql/data
     healthcheck:
@@ -52,7 +53,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      CLUSTER_ID: comercio-cluster-0001
+      # Tiene que ser un UUID de 16 bytes en base64url sin padding (22 caracteres).
+      # Una cadena arbitraria hace que el broker no arranque.
+      CLUSTER_ID: B0NNGf99RBSz43ljzTVDBA
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
       interval: 10s

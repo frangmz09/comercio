@@ -55,7 +55,7 @@ public class ComprobanteService {
     }
 
     public Comprobante buscar(UUID id) {
-        return comprobanteRepository.findById(id)
+        return comprobanteRepository.findWithPuntoVentaById(id)
                 .orElseThrow(() -> new NotFoundException("No existe un comprobante con id " + id));
     }
 
