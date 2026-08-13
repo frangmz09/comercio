@@ -1,0 +1,15 @@
+# El publisher del outbox queda apagado por defecto en los tests: la mayoria no tiene
+# nada que ver con Kafka y no hay razon para que dependan de un broker. Los tests que si
+# lo prueban lo encienden con @TestPropertySource.
+comercio:
+  outbox:
+    enabled: false
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: WARN

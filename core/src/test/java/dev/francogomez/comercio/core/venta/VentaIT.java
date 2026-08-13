@@ -1,5 +1,6 @@
 package dev.francogomez.comercio.core.venta;
 
+import dev.francogomez.comercio.core.comprobante.ComprobanteService;
 import dev.francogomez.comercio.core.precio.ListaPrecioService;
 import dev.francogomez.comercio.core.precio.PrecioService;
 import dev.francogomez.comercio.core.producto.Producto;
@@ -27,6 +28,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -56,11 +58,19 @@ class VentaIT {
     @Autowired
     private ProductoRepository productoRepository;
 
+    @Autowired
+    private ComprobanteService comprobanteService;
+
     private UUID listaId;
+    private UUID puntoVentaId;
 
     @BeforeEach
     void prepararLista() {
         listaId = listaService.crear("L-" + UUID.randomUUID().toString().substring(0, 8), "Minorista").getId();
+        // Numero aleatorio: cada test necesita su propio punto de venta para que las
+        // secuencias de comprobantes no se mezclen entre casos.
+        puntoVentaId = comprobanteService.crearPuntoVenta(
+                ThreadLocalRandom.current().nextInt(1, 1_000_000), "Caja de prueba").getId();
     }
 
     @Test
@@ -68,7 +78,7 @@ class VentaIT {
         UUID producto = productoConPrecioYStock("100.00", 10);
 
         Venta venta = ventaService.registrar(
-                new VentaRequest(listaId, List.of(new LineaRequest(producto, new BigDecimal("3")))),
+                new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(producto, new BigDecimal("3")))),
                 clave());
 
         assertThat(venta.getTotal()).isEqualByComparingTo("300.00");
@@ -85,7 +95,7 @@ class VentaIT {
         UUID producto = productoConPrecioYStock("100.00", 10);
 
         Venta venta = ventaService.registrar(
-                new VentaRequest(listaId, List.of(new LineaRequest(producto, new BigDecimal("2")))),
+                new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(producto, new BigDecimal("2")))),
                 clave());
 
         precioService.asignar(producto, listaId, new BigDecimal("250.00"), Instant.now());
@@ -102,7 +112,7 @@ class VentaIT {
         UUID otro = productoConPrecioYStock("49.50", 10);
 
         Venta venta = ventaService.registrar(
-                new VentaRequest(listaId, List.of(
+                new VentaRequest(listaId, puntoVentaId, List.of(
                         new LineaRequest(uno, new BigDecimal("2")),
                         new LineaRequest(otro, new BigDecimal("1")))),
                 clave());
@@ -117,7 +127,7 @@ class VentaIT {
         UUID sinStock = productoConPrecioYStock("100.00", 1);
 
         assertThatThrownBy(() -> ventaService.registrar(
-                new VentaRequest(listaId, List.of(
+                new VentaRequest(listaId, puntoVentaId, List.of(
                         new LineaRequest(conStock, new BigDecimal("2")),
                         new LineaRequest(sinStock, new BigDecimal("5")))),
                 clave()))
@@ -137,7 +147,7 @@ class VentaIT {
         stockService.registrar(sinPrecio.getId(), TipoMovimiento.ENTRADA, new BigDecimal("5"), "carga", null);
 
         assertThatThrownBy(() -> ventaService.registrar(
-                new VentaRequest(listaId, List.of(new LineaRequest(sinPrecio.getId(), BigDecimal.ONE))),
+                new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(sinPrecio.getId(), BigDecimal.ONE))),
                 clave()))
                 .hasMessageContaining("no tiene precio vigente");
 
@@ -148,7 +158,7 @@ class VentaIT {
     void repetirLaClaveDeIdempotenciaDevuelveLaMismaVentaSinVolverADescontar() {
         UUID producto = productoConPrecioYStock("100.00", 10);
         String clave = clave();
-        VentaRequest pedido = new VentaRequest(listaId, List.of(new LineaRequest(producto, new BigDecimal("3"))));
+        VentaRequest pedido = new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(producto, new BigDecimal("3"))));
 
         Venta primera = ventaService.registrar(pedido, clave);
         Venta segunda = ventaService.registrar(pedido, clave);
@@ -164,10 +174,10 @@ class VentaIT {
         String clave = clave();
 
         ventaService.registrar(
-                new VentaRequest(listaId, List.of(new LineaRequest(producto, new BigDecimal("3")))), clave);
+                new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(producto, new BigDecimal("3")))), clave);
 
         assertThatThrownBy(() -> ventaService.registrar(
-                new VentaRequest(listaId, List.of(new LineaRequest(producto, new BigDecimal("5")))), clave))
+                new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(producto, new BigDecimal("5")))), clave))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("ya se usó para una venta distinta");
     }
@@ -177,7 +187,7 @@ class VentaIT {
         UUID producto = productoConPrecioYStock("100.00", 10);
 
         assertThatThrownBy(() -> ventaService.registrar(
-                new VentaRequest(listaId, List.of(
+                new VentaRequest(listaId, puntoVentaId, List.of(
                         new LineaRequest(producto, BigDecimal.ONE),
                         new LineaRequest(producto, new BigDecimal("2")))),
                 clave()))
@@ -190,7 +200,7 @@ class VentaIT {
         int hilos = 8;
         UUID producto = productoConPrecioYStock("100.00", 50);
         String clave = clave();
-        VentaRequest pedido = new VentaRequest(listaId, List.of(new LineaRequest(producto, new BigDecimal("2"))));
+        VentaRequest pedido = new VentaRequest(listaId, puntoVentaId, List.of(new LineaRequest(producto, new BigDecimal("2"))));
 
         CountDownLatch largada = new CountDownLatch(1);
         AtomicInteger exitos = new AtomicInteger();

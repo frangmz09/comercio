@@ -71,6 +71,17 @@ public class Venta {
         return linea;
     }
 
+    /**
+     * La venta anulada conserva sus líneas y su total: lo que la revierte es la nota de
+     * crédito, y para poder explicar el saldo hay que poder ver las dos cosas.
+     */
+    public void anular() {
+        if (estado == EstadoVenta.ANULADA) {
+            throw new IllegalStateException("La venta " + id + " ya está anulada");
+        }
+        this.estado = EstadoVenta.ANULADA;
+    }
+
     private void recalcularTotal() {
         this.total = lineas.stream()
                 .map(LineaVenta::getSubtotal)

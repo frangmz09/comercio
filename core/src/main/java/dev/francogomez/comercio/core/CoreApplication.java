@@ -3,6 +3,7 @@ package dev.francogomez.comercio.core;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
 
@@ -13,6 +14,7 @@ import static org.springframework.data.web.config.EnableSpringDataWebSupport.Pag
  */
 @SpringBootApplication
 @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
+@EnableScheduling // el publisher del outbox corre en un @Scheduled
 public class CoreApplication {
 
     public static void main(String[] args) {

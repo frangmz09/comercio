@@ -21,7 +21,7 @@
     <modules>
         <module>contratos</module>
         <module>core</module>
-        <!-- reportes se suma en la semana 3-4, cuando core empiece a publicar eventos -->
+        <module>reportes</module>
     </modules>
 
     <properties>
@@ -39,9 +39,8 @@
         <sonar.organization>francogomez</sonar.organization>
         <sonar.projectKey>francogomez_comercio</sonar.projectKey>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <!-- Se suma core/target/site/jacoco/jacoco.xml,reportes/... cuando reportes exista -->
         <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.basedir}/../core/target/site/jacoco/jacoco.xml
+            ${project.basedir}/../core/target/site/jacoco/jacoco.xml,${project.basedir}/../reportes/target/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 

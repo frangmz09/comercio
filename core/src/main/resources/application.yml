@@ -26,6 +26,28 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # acks=all: el broker confirma recién cuando las réplicas in-sync escribieron. Sin
+      # esto, el publisher marcaría el evento como publicado ante una promesa que Kafka
+      # todavía puede romper.
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+
+comercio:
+  outbox:
+    enabled: true
+    # Cada cuánto se vacía el outbox. Un segundo mantiene la proyección de reportes
+    # fresca sin castigar la base con consultas vacías.
+    intervalo-ms: 1000
+
 server:
   port: ${PORT:8080}
 

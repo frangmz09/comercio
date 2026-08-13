@@ -15,6 +15,50 @@ services:
       timeout: 5s
       retries: 10
 
+  # Base propia de reportes: cada servicio es dueño de sus datos y nadie lee la tabla
+  # del otro. La unica via de comunicacion son los eventos.
+  postgres-reportes:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: comercio_reportes
+      POSTGRES_USER: comercio
+      POSTGRES_PASSWORD: comercio
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-reportes-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U comercio -d comercio_reportes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Kafka en modo KRaft: sin Zookeeper, que quedo obsoleto a partir de Kafka 3.3.
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Un solo broker: no hay a quien replicar.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: comercio-cluster-0001
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
   core:
     build:
       context: .
@@ -25,11 +69,66 @@ services:
       DB_NAME: comercio_core
       DB_USER: comercio
       DB_PASSWORD: comercio
+      KAFKA_BOOTSTRAP: kafka:29092
     ports:
       - "8080:8080"
     depends_on:
       postgres-core:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/actuator/health/readiness | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  reportes:
+    build:
+      context: .
+      dockerfile: reportes/Dockerfile
+    environment:
+      DB_HOST: postgres-reportes
+      DB_PORT: 5432
+      DB_NAME: comercio_reportes
+      DB_USER: comercio
+      DB_PASSWORD: comercio
+      KAFKA_BOOTSTRAP: kafka:29092
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres-reportes:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observabilidad/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - core
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      # El dashboard se aprovisiona desde el repositorio: nadie tiene que armarlo a mano
+      # ni exportar un JSON despues de tocarlo en la UI.
+      - ./observabilidad/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observabilidad/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
 
 volumes:
   postgres-core-data:
+  postgres-reportes-data:

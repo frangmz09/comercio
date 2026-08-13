@@ -1,10 +1,13 @@
 package dev.francogomez.comercio.core.venta;
 
+import dev.francogomez.comercio.core.comprobante.Comprobante;
+import dev.francogomez.comercio.core.comprobante.TipoComprobante;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,8 +21,14 @@ public final class VentaDtos {
 
     public record VentaRequest(
             @NotNull UUID listaPrecioId,
+            @NotNull UUID puntoVentaId,
             @NotEmpty(message = "la venta debe tener al menos una línea")
             @Valid List<LineaRequest> lineas) {
+    }
+
+    public record NotaCreditoRequest(
+            @NotNull UUID puntoVentaId,
+            @Size(max = 200) String motivo) {
     }
 
     public record LineaRequest(
@@ -48,16 +57,33 @@ public final class VentaDtos {
             EstadoVenta estado,
             BigDecimal total,
             Instant creadoEn,
-            List<LineaResponse> lineas) {
+            List<LineaResponse> lineas,
+            List<ComprobanteResponse> comprobantes) {
 
-        public static VentaResponse from(Venta v) {
+        public static VentaResponse from(Venta v, List<Comprobante> comprobantes) {
             return new VentaResponse(
                     v.getId(),
                     v.getLista().getId(),
                     v.getEstado(),
                     v.getTotal(),
                     v.getCreadoEn(),
-                    v.getLineas().stream().map(LineaResponse::from).toList());
+                    v.getLineas().stream().map(LineaResponse::from).toList(),
+                    comprobantes.stream().map(ComprobanteResponse::from).toList());
+        }
+    }
+
+    public record ComprobanteResponse(
+            UUID id,
+            TipoComprobante tipo,
+            String numero,
+            BigDecimal total,
+            UUID revierteA,
+            Instant creadoEn) {
+
+        public static ComprobanteResponse from(Comprobante c) {
+            return new ComprobanteResponse(
+                    c.getId(), c.getTipo(), c.getNumeroFormateado(),
+                    c.getTotal(), c.getRevierteA(), c.getCreadoEn());
         }
     }
 }
