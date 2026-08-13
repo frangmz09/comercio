@@ -1,6 +1,7 @@
 # comercio
 
 [![CI](https://github.com/frangmz09/comercio/actions/workflows/ci.yml/badge.svg)](https://github.com/frangmz09/comercio/actions/workflows/ci.yml)
+[![Demo](https://img.shields.io/badge/demo-swagger-85ea2d?logo=swagger&logoColor=white)](https://comercio-core.onrender.com/swagger-ui)
 
 Core transaccional de un comercio minorista: catálogo, precios con vigencia temporal,
 control de stock, ventas y comprobantes, más un servicio de reportes que se entera de
@@ -75,13 +76,30 @@ Son eventualmente consistentes: una venta recién registrada tarda un instante e
 
 ## Demo pública
 
-La API transaccional está desplegada en Render, con Swagger navegable. Corre sobre una
-instancia gratuita que se duerme tras 15 minutos sin tráfico: **el primer request después
-de un rato puede tardar cerca de un minuto** mientras el contenedor vuelve a levantar.
+### 👉 [comercio-core.onrender.com/swagger-ui](https://comercio-core.onrender.com/swagger-ui)
+
+La API transaccional está desplegada y se puede probar desde el navegador. Hay un
+producto, una lista de precios y un punto de venta ya cargados para arrancar sin trámite.
+
+> **El primer request puede tardar cerca de un minuto.** Corre sobre una instancia
+> gratuita que se duerme tras 15 minutos sin tráfico; el contenedor tiene que volver a
+> levantar. Después responde normal.
 
 Ahí solo vive `core`. `reportes` necesita Kafka, y no hay un Kafka gestionado gratuito
 que se sostenga en el tiempo, así que el sistema completo —los dos servicios, Kafka,
 Prometheus y Grafana— se levanta local con un comando.
+
+Un recorrido rápido sin salir de la terminal:
+
+```bash
+# Los productos cargados
+curl https://comercio-core.onrender.com/api/v1/productos
+
+# Una salida mayor al stock se rechaza con 409: nunca queda negativo
+curl -X POST https://comercio-core.onrender.com/api/v1/stock/movimientos \
+  -H "Content-Type: application/json" \
+  -d '{"productoId":"{productoId}","tipo":"SALIDA","cantidad":99999,"motivo":"prueba"}'
+```
 
 ## Cómo correrlo
 
@@ -90,6 +108,8 @@ Requiere Docker.
 ```bash
 docker compose up --build
 ```
+
+Levanta los dos servicios, sus dos bases, Kafka, Prometheus y Grafana:
 
 | | |
 |---|---|
