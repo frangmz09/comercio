@@ -1,42 +1,32 @@
 # comercio
 
-API REST para el core transaccional de un comercio minorista: catálogo con listas de
-precios vigentes, stock por movimientos, ventas atómicas y comprobantes con numeración
-sin huecos. En construcción como pieza de portfolio backend en Java/Spring Boot.
+[![CI](https://github.com/frangmz09/comercio/actions/workflows/ci.yml/badge.svg)](https://github.com/frangmz09/comercio/actions/workflows/ci.yml)
 
-> Dominio 100% sintético — no hay lógica propietaria, esquemas ni datos de ningún
+API REST para el core transaccional de un comercio minorista: catálogo de productos,
+listas de precios con vigencia temporal y control de stock por movimientos.
+
+Está construida alrededor de las reglas que un sistema de gestión real tiene que
+sostener y que un CRUD no cubre: que el stock nunca quede negativo aunque dos cajas
+vendan el mismo producto en el mismo instante, y que reimprimir una venta de hace seis
+meses devuelva el precio que regía ese día y no el de hoy.
+
+> El dominio es sintético. Es un proyecto propio, sin relación con ningún sistema de un
 > empleador. Ver [Sobre los datos](#sobre-los-datos).
 
-## Estado actual
+## Qué resuelve
 
-Catálogo, precios con vigencia y stock transaccional funcionando de punta a punta, con
-tests, CI y contenedor. Ventas, comprobantes y eventos se construyen sobre esta base —
-ver [Roadmap](#roadmap).
+**Catálogo.** Productos identificados por SKU, con categoría y unidad de medida. Los
+productos no se borran: se desactivan, porque hay movimientos y ventas históricas que
+los referencian.
 
-- [x] Monorepo Maven multi-módulo (`contratos` + `core`)
-- [x] Catálogo de productos (CRUD + listado paginado con filtro por categoría)
-- [x] Listas de precios con **vigencia temporal** y no solapamiento garantizado por la base
-- [x] Stock por **movimientos append-only** con saldo materializado y bloqueo pesimista
-- [x] Manejo de errores consistente (`@RestControllerAdvice` → una sola forma de `ApiError`)
-- [x] Migraciones versionadas con Flyway
-- [x] Tests unitarios (Mockito) y de integración con Postgres real (Testcontainers)
-- [x] **Tests de concurrencia** con hilos compitiendo por el último ítem de stock
-- [x] Documentación interactiva con Swagger/OpenAPI
-- [x] Health checks y métricas vía Actuator
-- [x] Dockerfile multi-stage + `docker-compose.yml`
-- [x] CI en GitHub Actions (build, tests, cobertura)
-- [ ] Ventas atómicas con idempotencia
-- [ ] Comprobantes con numeración sin huecos
-- [ ] Deploy público en Render
-- [ ] SonarCloud (quality gate + badge)
+**Precios con vigencia.** Un producto no tiene *un* precio: tiene un precio por lista
+(minorista, mayorista, un convenio puntual) y cada uno rige durante una ventana de
+tiempo. Cargar un precio nuevo no pisa al anterior, lo cierra. El historial completo
+queda consultable y cada venta puede explicar a qué precio se vendió.
 
-## Stack
-
-Java 21 · Spring Boot 3 · Spring Data JPA · Bean Validation · PostgreSQL · Flyway ·
-JUnit 5 · Mockito · Testcontainers · AssertJ · springdoc-openapi · Docker · GitHub Actions.
-
-Maven (no Gradle), paquetes organizados **por feature** (`producto/`, `shared/`), no por
-capa. DTOs como `record`, sin Lombok ni MapStruct salvo que se justifiquen.
+**Stock.** El saldo de un producto es la consecuencia de un libro de movimientos que
+nunca se edita. Una corrección de inventario no modifica el pasado: agrega un ajuste.
+Una salida que dejaría el saldo en negativo se rechaza, incluso bajo concurrencia.
 
 ## Cómo correrlo
 
@@ -46,107 +36,169 @@ Requiere Docker.
 docker compose up --build
 ```
 
-- API: http://localhost:8080/api/v1/productos
-- Swagger UI: http://localhost:8080/swagger-ui
-- Health: http://localhost:8080/actuator/health
+| | |
+|---|---|
+| API | http://localhost:8080/api/v1 |
+| Swagger UI | http://localhost:8080/swagger-ui |
+| Health | http://localhost:8080/actuator/health |
 
-### Flujo de ejemplo por curl
+## La API
+
+### Productos
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| `POST` | `/api/v1/productos` | Da de alta un producto |
+| `GET` | `/api/v1/productos/{id}` | Devuelve un producto |
+| `GET` | `/api/v1/productos` | Lista paginada, filtrable por `categoria` e `incluirInactivos` |
+| `PUT` | `/api/v1/productos/{id}` | Actualiza nombre, categoría y unidad |
+| `POST` | `/api/v1/productos/{id}/desactivar` | Lo saca del catálogo activo sin borrarlo |
+| `POST` | `/api/v1/productos/{id}/activar` | Lo reincorpora |
+
+### Precios
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| `POST` | `/api/v1/listas-precio` | Crea una lista (minorista, mayorista…) |
+| `GET` | `/api/v1/listas-precio` | Lista paginada de listas de precios |
+| `POST` | `/api/v1/listas-precio/{listaId}/precios` | Asigna un precio y cierra la vigencia del anterior |
+| `GET` | `/api/v1/listas-precio/{listaId}/precios/vigente` | Precio que rige en un `momento` dado (por defecto, ahora) |
+| `GET` | `/api/v1/listas-precio/{listaId}/precios/historial` | Todos los precios, del más nuevo al más viejo |
+
+### Stock
+
+| Método | Ruta | Qué hace |
+|---|---|---|
+| `POST` | `/api/v1/stock/movimientos` | Registra una `ENTRADA`, `SALIDA` o `AJUSTE` |
+| `GET` | `/api/v1/stock/{productoId}` | Saldo actual |
+| `GET` | `/api/v1/stock/{productoId}/movimientos` | Historial de movimientos |
+
+Todos los errores tienen la misma forma, sin importar dónde se originaron:
+
+```json
+{
+  "timestamp": "2026-08-13T01:17:32.955Z",
+  "status": 409,
+  "error": "Conflict",
+  "message": "Stock insuficiente: hay 3 y se intentan descontar 5",
+  "path": "/api/v1/stock/movimientos",
+  "validationErrors": null
+}
+```
+
+### Un flujo completo
 
 ```bash
-# Crear un producto
+# 1. Un producto
 curl -X POST http://localhost:8080/api/v1/productos \
   -H "Content-Type: application/json" \
   -d '{"sku":"ALM-001","nombre":"Fideos 500g","categoria":"Almacén","unidad":"unidad"}'
 
-# Listar por categoría
-curl "http://localhost:8080/api/v1/productos?categoria=Almacén"
-
-# Desactivar (no se borra: sale del catálogo activo, la data queda)
-curl -X POST http://localhost:8080/api/v1/productos/{id}/desactivar
-
-# Crear una lista de precios y asignar un precio
+# 2. Una lista de precios
 curl -X POST http://localhost:8080/api/v1/listas-precio \
   -H "Content-Type: application/json" \
   -d '{"codigo":"MINORISTA","nombre":"Minorista"}'
 
+# 3. Su precio
 curl -X POST http://localhost:8080/api/v1/listas-precio/{listaId}/precios \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","monto":1250.00}'
 
-# Precio vigente hoy, y el que regía en una fecha pasada
-curl "http://localhost:8080/api/v1/listas-precio/{listaId}/precios/vigente?productoId={productoId}"
-curl "http://localhost:8080/api/v1/listas-precio/{listaId}/precios/vigente?productoId={productoId}&momento=2026-01-15T00:00:00Z"
-
-# Cargar stock y consultar el saldo
+# 4. Entra mercadería
 curl -X POST http://localhost:8080/api/v1/stock/movimientos \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","tipo":"ENTRADA","cantidad":100,"motivo":"compra a proveedor"}'
 
+# 5. El saldo quedó en 100
 curl http://localhost:8080/api/v1/stock/{productoId}
 
-# Una salida mayor al saldo devuelve 409, nunca deja el stock negativo
+# 6. Una salida mayor al saldo se rechaza con 409 — el stock nunca queda negativo
 curl -X POST http://localhost:8080/api/v1/stock/movimientos \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","tipo":"SALIDA","cantidad":99999,"motivo":"venta"}'
+
+# 7. Sube el precio: el anterior no se pisa, se cierra
+curl -X POST http://localhost:8080/api/v1/listas-precio/{listaId}/precios \
+  -H "Content-Type: application/json" \
+  -d '{"productoId":"{productoId}","monto":1490.00}'
+
+# 8. El precio de la semana pasada sigue siendo el viejo
+curl "http://localhost:8080/api/v1/listas-precio/{listaId}/precios/vigente?productoId={productoId}&momento=2026-08-06T00:00:00Z"
 ```
 
-### Tests
+## Cómo funciona por dentro
+
+**El no solapamiento de precios lo garantiza la base, no el código.** Una constraint
+`EXCLUDE USING gist` sobre `tstzrange(vigencia_desde, vigencia_hasta)` impide que un
+producto tenga dos precios simultáneos en la misma lista. El servicio cierra la vigencia
+anterior al cargar una nueva, pero eso solo alcanza si nadie escribe en paralelo: bajo
+concurrencia, dos transacciones leen el mismo estado y ambas insertan. La base es el
+único lugar donde la exclusión se puede garantizar de verdad.
+
+**El saldo de stock existe para poder bloquearlo.** Se podría calcular con un `SUM()`
+sobre los movimientos, pero eso obliga a recorrer todo el historial en cada venta y, más
+importante, no deja una fila sobre la cual serializar. El saldo materializado permite un
+`SELECT ... FOR UPDATE` que hace que dos ventas simultáneas del mismo producto se
+ordenen: la segunda ve el saldo ya descontado por la primera en lugar de leer un valor
+viejo y sobrevender.
+
+**El lock se toma antes de validar.** Leer el saldo, concluir que alcanza y recién
+después descontar es exactamente cómo se sobrevende. Como última línea de defensa hay un
+`CHECK (cantidad >= 0)` en la tabla: aunque un bug dejara pasar una salida de más, la
+base se niega a persistir un stock negativo.
+
+**Los movimientos son inmutables.** No tienen setters ni versión: una vez escritos no se
+tocan. Cualquier corrección es un `AJUSTE` nuevo, para que el historial siga explicando
+cómo se llegó al saldo actual.
+
+**Flyway es dueño del esquema.** Hibernate corre con `ddl-auto: validate`: solo verifica
+que las entidades coincidan con lo que las migraciones crearon, nunca modifica la base.
+
+### Estructura
+
+Paquetes organizados por feature, no por capa técnica: cada módulo es una rebanada
+vertical con su propio controlador, servicio, repositorio y entidades.
+
+```
+core/src/main/java/dev/francogomez/comercio/core/
+├── producto/    catálogo
+├── precio/      listas y vigencias
+├── stock/       movimientos y saldos
+└── shared/      manejo de errores y configuración
+```
+
+## Tests
 
 ```bash
 ./mvnw verify
 ```
 
-Corre unitarios (Surefire) e integración con Testcontainers (Failsafe, requiere Docker)
-en la misma pasada, con reporte de cobertura JaCoCo en `core/target/site/jacoco/`.
+Corre unitarios (Surefire) y de integración (Failsafe) en la misma pasada. Los de
+integración levantan un PostgreSQL real con Testcontainers, así que requieren Docker.
+El reporte de cobertura queda en `core/target/site/jacoco/`.
 
-## Decisiones de diseño
+Los que importan son los de concurrencia: doce hilos frenados en una barrera común que
+se sueltan a la vez para competir por el último ítem de stock. Con stock para seis,
+exactamente seis salidas ganan, seis son rechazadas y el saldo termina en cero.
 
-- **Producto sin campo `precio`.** El precio vive en `Precio`, acotado a una ventana
-  `[desde, hasta)` por lista. Un producto tiene precios distintos según a quién se le
-  venda, y reimprimir una venta vieja devuelve el precio de ese día, no el de hoy.
-- **El no solapamiento de precios lo garantiza Postgres, no el servicio.** Una
-  constraint `EXCLUDE USING gist` sobre `tstzrange(vigencia_desde, vigencia_hasta)`
-  impide que un producto tenga dos precios simultáneos en la misma lista. El servicio
-  cierra la vigencia anterior al cargar una nueva, pero eso solo alcanza si nadie
-  escribe en paralelo: bajo concurrencia dos transacciones leen el mismo estado y ambas
-  insertan. La base es el único lugar donde la exclusión se puede garantizar de verdad.
-- **Stock como libro append-only.** Los movimientos no se editan ni se borran; una
-  corrección es un `AJUSTE` nuevo, para que el historial siga explicando cómo se llegó
-  al saldo actual. El saldo materializado existe para no recorrer todo el historial en
-  cada venta y, sobre todo, para dar una fila concreta sobre la cual serializar.
-- **`SELECT ... FOR UPDATE` sobre el saldo, no validación optimista.** Se toma el lock
-  *antes* de validar. Leer el saldo, decidir que alcanza y recién después descontar es
-  exactamente cómo se sobrevende. Además hay un `CHECK (cantidad >= 0)` en la tabla como
-  última línea de defensa ante un bug del servicio.
-- **Baja lógica, no física.** `desactivar` saca el producto del catálogo activo pero no
-  borra la fila: hay movimientos y ventas históricas que lo referencian.
+## Alcance
 
-### Una trampa que vale la pena documentar
+Es un core transaccional, no un ERP completo. Deliberadamente **no** incluye
+facturación fiscal (AFIP/ARCA), multi-tenancy, cuentas corrientes, compras y proveedores,
+caja y arqueo, ni interfaz gráfica: la superficie de uso es la API y su documentación
+OpenAPI.
 
-Hibernate no ejecuta el SQL en el orden en que está escrito el código: mantiene una cola
-de acciones y la ordena por tipo, con los `INSERT` antes que los `UPDATE`. Al cargar un
-precio nuevo, eso hacía que el `INSERT` saliera mientras el precio anterior todavía tenía
-`vigencia_hasta` en `NULL` — los rangos se solapaban y la constraint rechazaba la
-operación entera. La solución es un `flush()` explícito después de cerrar la vigencia
-anterior, para forzar el `UPDATE` primero. Está comentado en `PrecioService`.
+## Stack
 
-La alternativa era declarar la constraint `DEFERRABLE INITIALLY DEFERRED` y dejar que
-Postgres la validara en el commit. Se descartó porque entonces el error aparece al cerrar
-la transacción, fuera del método del servicio, donde ya no se puede traducir a un 409 con
-un mensaje útil.
-
-## Roadmap
-
-Ventas, stock, comprobantes, un segundo servicio de reportes consumiendo eventos de
-Kafka con outbox transaccional, observabilidad con Prometheus/Grafana, y deploy en
-Render. Detalle completo en las notas de diseño del proyecto.
-
-**Fuera de alcance, por decisión:** Kubernetes/OpenShift, integración fiscal AFIP/ARCA,
-multi-tenant, event sourcing completo, saga con compensación distribuida, service
-discovery, API gateway, frontend.
+Java 21 · Spring Boot 3 · Spring Data JPA · Bean Validation · PostgreSQL · Flyway ·
+JUnit 5 · Mockito · Testcontainers · AssertJ · springdoc-openapi · Docker · GitHub Actions
 
 ## Sobre los datos
 
-Todo el dominio (productos, precios, stock) es sintético y genérico de retail. Este
-repositorio es un ejercicio propio de portfolio, sin relación con ningún sistema de un
-empleador actual o anterior.
+Todo el dominio —productos, precios, stock— es sintético y genérico de retail. Este
+repositorio es un ejercicio propio, sin relación con ningún sistema de un empleador
+actual o anterior.
+
+## Licencia
+
+[MIT](LICENSE)
