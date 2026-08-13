@@ -7,6 +7,18 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [0.2.0] — 2026-08-14
 
+> [!WARNING]
+> **Cambio incompatible.** Las operaciones de escritura pasan a exigir autenticación.
+> Un cliente que antes hacía `POST`, `PUT` o `DELETE` sin credenciales ahora recibe
+> `401`. Para seguir funcionando tiene que autenticarse contra
+> `POST /api/v1/auth/login` y mandar el token en `Authorization: Bearer <token>`.
+>
+> Las consultas `GET` no cambian: siguen siendo públicas.
+>
+> El bump es `MINOR` y no `MAJOR` porque el proyecto está en `0.x`, donde SemVer no
+> considera estable la API pública. Después de un `1.0.0`, este mismo cambio sería
+> `2.0.0`.
+
 ### Añadido
 - Autenticación con JWT: `POST /api/v1/auth/login` devuelve un token firmado con HS256,
   y las contraseñas se guardan con BCrypt.

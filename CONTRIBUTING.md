@@ -47,7 +47,18 @@ el diff; uno que dice *por qué* es lo único que no se puede reconstruir despu�
 | Corrección sin cambio de contrato | `PATCH` |
 
 Mientras el proyecto esté en `0.x`, se admite romper el contrato en un `MINOR`, que es
-lo que SemVer contempla para versiones iniciales.
+lo que SemVer contempla para versiones iniciales: en la versión mayor cero la API pública
+no se considera estable.
+
+La pregunta que decide el bump no es cuánto código cambió, sino **qué se rompe para quien
+consume la API**. Un refactor de tres mil líneas que no toca el contrato es `PATCH`;
+agregar una validación obligatoria a un campo existente son dos líneas y rompe el
+contrato. Un `PATCH` le está diciendo a quien integra que puede actualizar sin mirar, así
+que usarlo para un cambio incompatible es peor que equivocarse de número: es dar una
+garantía falsa.
+
+Todo cambio incompatible se marca de forma visible en el `CHANGELOG.md`, con qué se rompe
+y qué hay que hacer para adaptarse.
 
 ## Publicar una versión
 
