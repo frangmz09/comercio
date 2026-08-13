@@ -5,8 +5,29 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.2.0] — 2026-08-14
+
 ### Añadido
-- Autenticación con JWT y roles `ADMIN` / `VENDEDOR`.
+- Autenticación con JWT: `POST /api/v1/auth/login` devuelve un token firmado con HS256,
+  y las contraseñas se guardan con BCrypt.
+- Roles `ADMIN` y `VENDEDOR`. El catálogo, las listas de precios y los puntos de venta
+  los administra ADMIN; vender y mover stock lo pueden hacer ambos.
+- Botón *Authorize* en Swagger UI: se pega el token una vez y queda aplicado a todas
+  las llamadas.
+- Usuarios de demostración creados en el arranque, desactivables con
+  `comercio.demo.seed-usuarios=false`.
+
+### Cambiado
+- Las operaciones que modifican estado ahora requieren token. **Las consultas GET siguen
+  siendo públicas**, para que la demo se pueda recorrer sin registrarse.
+- Los 401 y 403 devuelven el mismo `ApiError` que el resto de la API, en lugar de la
+  página HTML por defecto de Spring Security.
+
+### Seguridad
+- La API pública dejó de aceptar escrituras anónimas.
+- El secreto de firma se toma de `COMERCIO_JWT_SECRET` y la aplicación no arranca si
+  tiene menos de 32 caracteres: una firma débil que nadie note es peor que un fallo
+  ruidoso en el arranque.
 
 ## [0.1.0] — 2026-08-13
 
@@ -52,5 +73,6 @@ consumiendo eventos y la API desplegada públicamente.
 - Observabilidad con Actuator, Prometheus y un dashboard de Grafana aprovisionado.
 - Despliegue público en Render con blueprint versionado.
 
-[No publicado]: https://github.com/frangmz09/comercio/compare/v0.1.0...HEAD
+[No publicado]: https://github.com/frangmz09/comercio/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/frangmz09/comercio/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/frangmz09/comercio/releases/tag/v0.1.0

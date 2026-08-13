@@ -42,6 +42,19 @@ spring:
         request.timeout.ms: 5000
 
 comercio:
+  jwt:
+    # El valor por defecto solo sirve para desarrollo local. En cualquier despliegue se
+    # sobreescribe con COMERCIO_JWT_SECRET: un secreto versionado en el repositorio es
+    # equivalente a no tener firma. Minimo 32 caracteres, que es lo que exige HS256.
+    secret: ${COMERCIO_JWT_SECRET:desarrollo-local-secreto-de-32-caracteres-minimo}
+    # Corta a proposito: un token emitido no se puede revocar, asi que la expiracion es
+    # el unico limite real de su validez.
+    vigencia-minutos: ${COMERCIO_JWT_VIGENCIA_MINUTOS:60}
+
+  demo:
+    # Crea admin/vendedor al arrancar si no existen. Se apaga en un sistema real.
+    seed-usuarios: ${COMERCIO_DEMO_SEED_USUARIOS:true}
+
   outbox:
     enabled: true
     # Cada cuánto se vacía el outbox. Un segundo mantiene la proyección de reportes
