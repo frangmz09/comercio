@@ -35,9 +35,11 @@
         <jacoco.version>0.8.13</jacoco.version>
         <sonar-maven-plugin.version>5.1.0.4751</sonar-maven-plugin.version>
 
-        <!-- SonarCloud: ajustar organization/projectKey a los valores reales al crear el proyecto en sonarcloud.io -->
-        <sonar.organization>francogomez</sonar.organization>
-        <sonar.projectKey>francogomez_comercio</sonar.projectKey>
+        <!-- Los identificadores de SonarCloud derivan de la cuenta de GitHub, no del
+             groupId de Maven: la organizacion es el login y la clave del proyecto es
+             <login>_<repositorio>. -->
+        <sonar.organization>frangmz09</sonar.organization>
+        <sonar.projectKey>frangmz09_comercio</sonar.projectKey>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.coverage.jacoco.xmlReportPaths>
             ${project.basedir}/../core/target/site/jacoco/jacoco.xml,${project.basedir}/../reportes/target/site/jacoco/jacoco.xml

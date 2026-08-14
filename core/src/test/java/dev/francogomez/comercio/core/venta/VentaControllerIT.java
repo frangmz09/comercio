@@ -7,6 +7,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -31,6 +32,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
+// Se inyecta la autenticación directamente en el contexto en lugar de pedir un token
+// real: lo que estos casos verifican es el comportamiento de negocio, y la mecánica del
+// JWT tiene sus propios tests en AutenticacionIT.
+@WithMockUser(roles = "ADMIN")
 class VentaControllerIT {
 
     @Container

@@ -1,7 +1,21 @@
-# El publisher del outbox queda apagado por defecto en los tests: la mayoria no tiene
-# nada que ver con Kafka y no hay razon para que dependan de un broker. Los tests que si
-# lo prueban lo encienden con @TestPropertySource.
+# OJO: este archivo NO complementa al application.yml principal, lo REEMPLAZA. Spring
+# resuelve classpath:/application.yml contra el primero que encuentra, y en los tests
+# ese es el de test-classes. Cualquier propiedad que la aplicacion necesite para
+# arrancar tiene que estar tambien aca, aunque ya este definida en el modulo principal.
+
 comercio:
+  jwt:
+    # Solo para tests. Minimo 32 caracteres, que es lo que exige HS256.
+    secret: secreto-exclusivo-para-tests-de-mas-de-32-caracteres
+    vigencia-minutos: 60
+
+  demo:
+    # Los tests de autenticacion se apoyan en admin y vendedor ya creados.
+    seed-usuarios: true
+
+  # El publisher del outbox queda apagado por defecto: la mayoria de los tests no tiene
+  # nada que ver con Kafka y no hay razon para que dependan de un broker. Los que si lo
+  # prueban lo encienden con @TestPropertySource.
   outbox:
     enabled: false
 

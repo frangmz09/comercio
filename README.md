@@ -1,6 +1,8 @@
 # comercio
 
 [![CI](https://github.com/frangmz09/comercio/actions/workflows/ci.yml/badge.svg)](https://github.com/frangmz09/comercio/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=frangmz09_comercio&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=frangmz09_comercio)
+[![Cobertura](https://sonarcloud.io/api/project_badges/measure?project=frangmz09_comercio&metric=coverage)](https://sonarcloud.io/summary/new_code?id=frangmz09_comercio)
 [![Demo](https://img.shields.io/badge/demo-swagger-85ea2d?logo=swagger&logoColor=white)](https://comercio-core.onrender.com/swagger-ui)
 
 Core transaccional de un comercio minorista: catálogo, precios con vigencia temporal,
@@ -118,30 +120,56 @@ Levanta los dos servicios, sus dos bases, Kafka, Prometheus y Grafana:
 | Grafana | http://localhost:3000 — dashboard *comercio — operación* |
 | Prometheus | http://localhost:9090 |
 
+## Autenticación
+
+**Consultar es público; modificar requiere token.** La decisión es deliberada: exigir
+login para mirar el catálogo volvería inútil una demo que existe para ser recorrida por
+alguien que llega por primera vez.
+
+```bash
+curl -X POST https://comercio-core.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+Devuelve un JWT que viaja en `Authorization: Bearer <token>`. En Swagger UI alcanza con
+pegarlo una vez en el botón **Authorize**.
+
+| Usuario | Contraseña | Rol | Puede |
+|---|---|---|---|
+| `admin` | `admin123` | `ADMIN` | Todo: catálogo, precios, puntos de venta, ventas y stock |
+| `vendedor` | `vendedor123` | `VENDEDOR` | Vender, mover stock y emitir notas de crédito |
+
+Son credenciales de demostración y están publicadas a propósito: el objetivo no es que
+sean secretas, sino que la API no acepte escrituras anónimas. En un despliegue real se
+apagan con `comercio.demo.seed-usuarios=false` y el secreto de firma se pasa por
+`COMERCIO_JWT_SECRET`.
+
 ## La API
 
 ### `core` — catálogo, precios, stock
 
 | Método | Ruta | Qué hace |
 |---|---|---|
-| `POST` | `/api/v1/productos` | Da de alta un producto |
+| `POST` | `/api/v1/auth/login` | Devuelve el token de acceso |
+| `POST` | `/api/v1/productos` | Da de alta un producto · **ADMIN** |
 | `GET` | `/api/v1/productos` | Lista paginada, filtrable por `categoria` e `incluirInactivos` |
-| `POST` | `/api/v1/productos/{id}/desactivar` | Lo saca del catálogo activo sin borrarlo |
-| `POST` | `/api/v1/listas-precio` | Crea una lista (minorista, mayorista…) |
-| `POST` | `/api/v1/listas-precio/{id}/precios` | Asigna un precio y cierra la vigencia del anterior |
+| `POST` | `/api/v1/productos/{id}/desactivar` | Lo saca del catálogo activo sin borrarlo · **ADMIN** |
+| `POST` | `/api/v1/listas-precio` | Crea una lista (minorista, mayorista…) · **ADMIN** |
+| `POST` | `/api/v1/listas-precio/{id}/precios` | Asigna un precio y cierra la vigencia del anterior · **ADMIN** |
 | `GET` | `/api/v1/listas-precio/{id}/precios/vigente` | Precio que rige en un `momento` dado |
 | `GET` | `/api/v1/listas-precio/{id}/precios/historial` | Todos los precios, del más nuevo al más viejo |
-| `POST` | `/api/v1/stock/movimientos` | Registra `ENTRADA`, `SALIDA` o `AJUSTE` |
+| `POST` | `/api/v1/stock/movimientos` | Registra `ENTRADA`, `SALIDA` o `AJUSTE` · **ADMIN o VENDEDOR** |
 | `GET` | `/api/v1/stock/{productoId}` | Saldo actual |
 
 ### `core` — ventas y comprobantes
 
 | Método | Ruta | Qué hace |
 |---|---|---|
-| `POST` | `/api/v1/puntos-venta` | Crea un punto de venta con su propia numeración |
-| `POST` | `/api/v1/ventas` | Registra una venta. **Requiere header `Idempotency-Key`** |
+| `POST` | `/api/v1/puntos-venta` | Crea un punto de venta con su propia numeración · **ADMIN** |
+| `POST` | `/api/v1/ventas` | Registra una venta. Requiere `Idempotency-Key` · **ADMIN o VENDEDOR** |
 | `GET` | `/api/v1/ventas/{id}` | Venta con sus líneas y comprobantes |
-| `POST` | `/api/v1/ventas/{id}/nota-credito` | Revierte la venta y devuelve el stock |
+| `POST` | `/api/v1/ventas/{id}/nota-credito` | Revierte la venta y devuelve el stock · **ADMIN o VENDEDOR** |
 | `GET` | `/api/v1/comprobantes/{id}` | Comprobante emitido |
 
 ### `reportes`
@@ -260,6 +288,17 @@ que un fallo revierta las dos cosas juntas.
 topic. El comportamiento por defecto —reintentar sobre el mismo registro para siempre—
 haría que un solo evento ilegible frene a todos los que vienen detrás.
 
+**La autorización vive en el borde HTTP, no en los servicios.** Las reglas están en el
+`SecurityFilterChain` por ruta y método, y no como `@PreAuthorize` sobre los servicios.
+Quién puede hacer qué es una preocupación del transporte; mantenerla ahí deja a los
+servicios y a sus tests libres de contexto de seguridad, y por eso la suite existente
+siguió funcionando sin tocar más que los dos casos que hablan HTTP.
+
+**Los tokens no se revocan, expiran.** No hay sesión ni estado en el servidor: toda la
+información para autorizar viaja firmada en el token. La contracara es que uno ya emitido
+no se puede invalidar antes de tiempo, y por eso la vigencia es corta. Una lista de
+revocación resolvería eso trayendo de vuelta exactamente el estado que este esquema evita.
+
 **Flyway es dueño del esquema.** Hibernate corre con `ddl-auto: validate`: solo verifica
 que las entidades coincidan con lo que las migraciones crearon.
 
@@ -320,7 +359,8 @@ sería infraestructura sin un problema que resolver.
 
 ## Stack
 
-Java 21 · Spring Boot 3 · Spring Data JPA · Spring Kafka · Bean Validation · PostgreSQL ·
+Java 21 · Spring Boot 3 · Spring Data JPA · Spring Security (JWT) · Spring Kafka ·
+Bean Validation · PostgreSQL ·
 Flyway · Kafka (KRaft) · JUnit 5 · Mockito · Testcontainers · AssertJ · Awaitility ·
 JaCoCo · Micrometer · Prometheus · Grafana · springdoc-openapi · Docker · GitHub Actions
 
