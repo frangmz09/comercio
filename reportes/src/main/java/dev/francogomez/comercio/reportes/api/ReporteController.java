@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @RestController
@@ -37,7 +38,11 @@ public class ReporteController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
 
-        LocalDate fin = hasta != null ? hasta : LocalDate.now();
+        // En UTC y no en la zona del servidor, porque las proyecciones se agrupan por
+        // fecha UTC. Con LocalDate.now() a secas, un servidor en Argentina (UTC-3) entre
+        // las 21 y la medianoche calcula el día anterior y las ventas de hoy quedan
+        // fuera del rango por defecto.
+        LocalDate fin = hasta != null ? hasta : LocalDate.now(ZoneOffset.UTC);
         LocalDate inicio = desde != null ? desde : fin.minusDays(30);
 
         return service.ventasEntre(inicio, fin).stream().map(VentaDiariaResponse::from).toList();

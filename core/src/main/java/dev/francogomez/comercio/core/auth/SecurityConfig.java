@@ -26,6 +26,10 @@ import java.io.IOException;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // hasRole() agrega el prefijo ROLE_ por su cuenta, asi que acá va el nombre pelado.
+    private static final String ADMIN = Rol.ADMIN.name();
+    private static final String VENDEDOR = Rol.VENDEDOR.name();
+
     private final JwtAuthenticationFilter jwtFilter;
     private final ObjectMapper objectMapper;
 
@@ -62,14 +66,16 @@ public class SecurityConfig {
                         // Consultar no requiere token: es lo que hace navegable la demo.
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
 
-                        // El catálogo y los precios los administra ADMIN.
-                        .requestMatchers("/api/v1/productos/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/listas-precio/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/puntos-venta/**").hasRole("ADMIN")
+                        // Los roles salen del enum y no de literales sueltos: renombrar
+                        // uno rompe la compilación en vez de dejar una regla que ya no
+                        // coincide con nada y silenciosamente niega el acceso a todos.
+                        .requestMatchers("/api/v1/productos/**").hasRole(ADMIN)
+                        .requestMatchers("/api/v1/listas-precio/**").hasRole(ADMIN)
+                        .requestMatchers("/api/v1/puntos-venta/**").hasRole(ADMIN)
 
                         // Operar sobre el mostrador: cualquiera de los dos roles.
-                        .requestMatchers("/api/v1/ventas/**").hasAnyRole("ADMIN", "VENDEDOR")
-                        .requestMatchers("/api/v1/stock/**").hasAnyRole("ADMIN", "VENDEDOR")
+                        .requestMatchers("/api/v1/ventas/**").hasAnyRole(ADMIN, VENDEDOR)
+                        .requestMatchers("/api/v1/stock/**").hasAnyRole(ADMIN, VENDEDOR)
 
                         .anyRequest().authenticated())
 

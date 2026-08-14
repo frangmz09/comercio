@@ -5,6 +5,21 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+- Los reportes de ventas agrupan por fecha UTC, pero el rango por defecto se calculaba
+  en la zona del servidor. En Argentina (UTC-3), entre las 21 y la medianoche el reporte
+  devolvía el día anterior y las ventas del día quedaban fuera del rango.
+- La cobertura no llegaba a SonarCloud: el valor de `sonar.coverage.jacoco.xmlReportPaths`
+  estaba escrito en varias líneas y Maven no recorta el valor de una propiedad.
+
+### Cambiado
+- Los roles en las reglas de autorización salen del enum `Rol` y no de literales
+  repetidos, para que renombrar uno rompa la compilación en lugar de dejar una regla que
+  no coincide con nada.
+- Se silencian dos familias de falsos positivos de Sonar, con el motivo documentado:
+  reglas de Oracle aplicadas a DDL de PostgreSQL, y detección de `TODO` disparada por la
+  palabra española «todo» en los comentarios.
+
 ## [0.2.0] — 2026-08-14
 
 > [!WARNING]
