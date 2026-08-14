@@ -131,3 +131,12 @@ silencioso puede tener el análisis roto durante semanas sin que nadie se entere
 Tiene que pasar entero, con los tests de integración incluidos. Requieren Docker porque
 levantan PostgreSQL y Kafka reales: son los que detectan los problemas de concurrencia,
 que es justamente lo que este proyecto se propone demostrar.
+
+Sobre la lista de verificación de la plantilla: se marca `[x]` únicamente lo que se
+comprobó. Lo que queda pendiente se deja en `[ ]` diciendo cuándo se confirma, y lo que
+no viene al caso —no hubo cambios de esquema, no cambia el uso— se **tacha** con una
+explicación, en lugar de marcarse. Un `[x]` que dice «no aplica» se lee como que sí se
+hizo, y una lista donde todo está tildado deja de significar algo.
+
+`./mvnw verify` es el único ítem que no se tacha nunca: aplica a cualquier cambio,
+incluso a los que solo tocan configuración.
