@@ -13,7 +13,7 @@
 
     <groupId>dev.francogomez.comercio</groupId>
     <artifactId>comercio</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>comercio</name>
     <description>Core transaccional de retail: ventas, stock y comprobantes</description>
