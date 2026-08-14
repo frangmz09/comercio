@@ -52,9 +52,13 @@
              de Oracle. Las migraciones son PostgreSQL, donde VARCHAR2 directamente no
              existe: Sonar esta analizando el DDL con el dialecto equivocado.
 
-             java:S1135 marca comentarios con tareas pendientes buscando la palabra TODO,
-             y los comentarios de este proyecto estan en espanol, donde "todo" es una
-             palabra corriente. "recorrer todo el historial" no es una tarea pendiente. -->
+             java:S1135 marca comentarios con tareas pendientes buscando esa palabra en
+             ingles, que en espanol es una palabra corriente: "recorrer el historial
+             completo" no es una tarea pendiente. La regla es inservible en un codigo
+             comentado en castellano.
+
+             (Este comentario evita a proposito escribir la palabra que dispara la regla:
+             xml:S1135 la detecta tambien en los XML, incluido este pom.) -->
         <sonar.issue.ignore.multicriteria>dialectoSql,todoEnEspanol</sonar.issue.ignore.multicriteria>
         <sonar.issue.ignore.multicriteria.dialectoSql.ruleKey>plsql:VarcharUsageCheck</sonar.issue.ignore.multicriteria.dialectoSql.ruleKey>
         <sonar.issue.ignore.multicriteria.dialectoSql.resourceKey>**/db/migration/*.sql</sonar.issue.ignore.multicriteria.dialectoSql.resourceKey>

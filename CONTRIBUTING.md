@@ -107,6 +107,21 @@ git push origin v0.2.0
 El tag es anotado y no liviano a propósito: guarda autor, fecha y mensaje, y es el único
 que `git describe` considera por defecto.
 
+## Análisis de código
+
+SonarCloud analiza el proyecto desde el CI, con el scanner de Maven. Es importante que
+sea así y no con el **Análisis Automático** de SonarCloud: ese modo escanea el
+repositorio sin ejecutar el build, y entonces no puede leer el reporte de cobertura de
+JaCoCo ni la configuración del `pom.xml`. Además, mientras está activo, SonarCloud
+rechaza el análisis que envía el CI.
+
+Se desactiva en **Administration → Analysis Method**.
+
+El paso de análisis no frena el merge: que el proyecto compile y los tests pasen es una
+afirmación sobre el código, mientras que la disponibilidad de un servicio externo no lo
+es. Pero si falla, el run deja un aviso visible en su resumen — un `continue-on-error`
+silencioso puede tener el análisis roto durante semanas sin que nadie se entere.
+
 ## Antes de abrir un PR
 
 ```bash
