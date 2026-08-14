@@ -38,13 +38,32 @@ jobs:
       # este disponible y el token siga vigente son condiciones de un servicio externo.
       # Mezclarlas hace que una caida ajena deje el repositorio en rojo, y un badge rojo
       # que en realidad no significa nada roto es peor que no tener badge.
-      # El estado del quality gate se ve en su propio badge en el README.
       - name: Analisis SonarCloud
+        id: sonar
         if: env.SONAR_TOKEN != ''
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./mvnw -B sonar:sonar
+
+      # Sin este paso, continue-on-error deja el fallo completamente mudo: el step figura
+      # como success en la API y en la interfaz, y el analisis puede estar roto durante
+      # semanas sin que nadie se entere. La falla no debe frenar el merge, pero tiene que
+      # verse. El aviso queda en el resumen del run, no perdido en el log.
+      - name: Avisar si el analisis no corrio
+        if: steps.sonar.outcome == 'failure'
+        run: |
+          {
+            echo "### ⚠️ El analisis de SonarCloud fallo"
+            echo ""
+            echo "El build y los tests pasaron; lo que fallo fue el analisis."
+            echo "Las metricas del dashboard quedan desactualizadas hasta que se resuelva."
+            echo ""
+            echo "Causa habitual: el **Analisis Automatico** esta activado en SonarCloud."
+            echo "Mientras lo este, SonarCloud rechaza el analisis del CI, ignora la"
+            echo "configuracion del pom y no puede leer la cobertura, porque no ejecuta"
+            echo "el build. Se desactiva en Administration > Analysis Method."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publicar reportes de test
         if: always()

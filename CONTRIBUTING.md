@@ -107,6 +107,21 @@ git push origin v0.2.0
 El tag es anotado y no liviano a propósito: guarda autor, fecha y mensaje, y es el único
 que `git describe` considera por defecto.
 
+## Análisis de código
+
+SonarCloud analiza el proyecto desde el CI, con el scanner de Maven. Es importante que
+sea así y no con el **Análisis Automático** de SonarCloud: ese modo escanea el
+repositorio sin ejecutar el build, y entonces no puede leer el reporte de cobertura de
+JaCoCo ni la configuración del `pom.xml`. Además, mientras está activo, SonarCloud
+rechaza el análisis que envía el CI.
+
+Se desactiva en **Administration → Analysis Method**.
+
+El paso de análisis no frena el merge: que el proyecto compile y los tests pasen es una
+afirmación sobre el código, mientras que la disponibilidad de un servicio externo no lo
+es. Pero si falla, el run deja un aviso visible en su resumen — un `continue-on-error`
+silencioso puede tener el análisis roto durante semanas sin que nadie se entere.
+
 ## Antes de abrir un PR
 
 ```bash
@@ -116,3 +131,12 @@ que `git describe` considera por defecto.
 Tiene que pasar entero, con los tests de integración incluidos. Requieren Docker porque
 levantan PostgreSQL y Kafka reales: son los que detectan los problemas de concurrencia,
 que es justamente lo que este proyecto se propone demostrar.
+
+Sobre la lista de verificación de la plantilla: se marca `[x]` únicamente lo que se
+comprobó. Lo que queda pendiente se deja en `[ ]` diciendo cuándo se confirma, y lo que
+no viene al caso —no hubo cambios de esquema, no cambia el uso— se **tacha** con una
+explicación, en lugar de marcarse. Un `[x]` que dice «no aplica» se lee como que sí se
+hizo, y una lista donde todo está tildado deja de significar algo.
+
+`./mvnw verify` es el único ítem que no se tacha nunca: aplica a cualquier cambio,
+incluso a los que solo tocan configuración.

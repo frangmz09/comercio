@@ -9,7 +9,14 @@
 
 ## Cómo se verificó
 
-<!-- Tests agregados, qué prueban, y cualquier verificación manual. -->
+<!-- Tests agregados, qué prueban, y cualquier verificación manual.
+
+     Sobre la lista de abajo: marcá [x] solo lo que verificaste de verdad. Si algo queda
+     pendiente, dejalo en [ ] y decí cuándo se confirma. Y si un ítem no viene al caso
+     —no hubo cambios de esquema, no cambia el uso—, tachalo con ~~ ~~ y explicá por qué,
+     en lugar de marcarlo: un [x] que dice "no aplica" se lee como que sí se hizo.
+
+     `./mvnw verify` no se tacha nunca. Es el único que aplica a todo cambio. -->
 
 - [ ] `./mvnw verify` en verde
 - [ ] Tests nuevos para el comportamiento agregado
