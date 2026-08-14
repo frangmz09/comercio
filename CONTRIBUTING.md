@@ -36,6 +36,36 @@ docs(readme): reorientar el README a guia de uso
 El cuerpo importa más que el asunto. Un commit que dice *qué* cambió es redundante con
 el diff; uno que dice *por qué* es lo único que no se puede reconstruir después.
 
+## Merge
+
+Se usa **merge commit** (`--no-ff`), no squash ni rebase.
+
+El grafo conserva qué commits vinieron juntos y de qué rama salieron. Esa agrupación es
+información: dice que la corrección del CI y el cambio de documentación formaron parte de
+entregar la autenticación, y no fueron tres cosas sueltas que cayeron el mismo día.
+
+El mensaje del merge queda como lo propone GitHub:
+
+```
+Merge pull request #1 from frangmz09/feat/autenticacion-jwt
+
+feat(auth): agregar autenticacion con JWT y roles
+```
+
+No lleva formato Conventional Commits, y está bien: la especificación no cubre los
+merges, y las herramientas que validan el formato los ignoran por defecto. Ponerle
+`chore(merge):` sería inventar una convención que nadie sigue.
+
+Las otras dos estrategias tienen su lugar:
+
+- **Squash** cuando la rama trae commits de trabajo en progreso —«wip», «arreglo typo»,
+  «ahora sí»— que no le sirven a nadie en el historial. Si los commits están escritos
+  para ser leídos, aplastarlos tira ese trabajo.
+- **Rebase** cuando se busca una historia perfectamente lineal. Se descarta acá porque
+  pierde la agrupación por rama, que es justamente lo que hace legible el grafo.
+
+La rama se borra después del merge: ya quedó registrada en el commit de merge y en el PR.
+
 ## Versionado
 
 [SemVer](https://semver.org/lang/es/), con la versión en el `pom.xml` del módulo raíz.
