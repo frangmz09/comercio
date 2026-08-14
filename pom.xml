@@ -41,9 +41,25 @@
         <sonar.organization>frangmz09</sonar.organization>
         <sonar.projectKey>frangmz09_comercio</sonar.projectKey>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.basedir}/../core/target/site/jacoco/jacoco.xml,${project.basedir}/../reportes/target/site/jacoco/jacoco.xml
-        </sonar.coverage.jacoco.xmlReportPaths>
+        <!-- En una sola linea y sin sangria: Maven no recorta el valor de una propiedad,
+             asi que un salto de linea deja la ruta como "\n   /path/..." y no resuelve.
+             La propiedad se hereda, y cada modulo resuelve su propio basedir. -->
+        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+
+        <!-- Dos familias de falsos positivos que no vale la pena arrastrar:
+
+             plsql:VarcharUsageCheck exige VARCHAR2 en lugar de VARCHAR, que es sintaxis
+             de Oracle. Las migraciones son PostgreSQL, donde VARCHAR2 directamente no
+             existe: Sonar esta analizando el DDL con el dialecto equivocado.
+
+             java:S1135 marca comentarios con tareas pendientes buscando la palabra TODO,
+             y los comentarios de este proyecto estan en espanol, donde "todo" es una
+             palabra corriente. "recorrer todo el historial" no es una tarea pendiente. -->
+        <sonar.issue.ignore.multicriteria>dialectoSql,todoEnEspanol</sonar.issue.ignore.multicriteria>
+        <sonar.issue.ignore.multicriteria.dialectoSql.ruleKey>plsql:VarcharUsageCheck</sonar.issue.ignore.multicriteria.dialectoSql.ruleKey>
+        <sonar.issue.ignore.multicriteria.dialectoSql.resourceKey>**/db/migration/*.sql</sonar.issue.ignore.multicriteria.dialectoSql.resourceKey>
+        <sonar.issue.ignore.multicriteria.todoEnEspanol.ruleKey>java:S1135</sonar.issue.ignore.multicriteria.todoEnEspanol.ruleKey>
+        <sonar.issue.ignore.multicriteria.todoEnEspanol.resourceKey>**/*.java</sonar.issue.ignore.multicriteria.todoEnEspanol.resourceKey>
     </properties>
 
     <dependencyManagement>
