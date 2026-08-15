@@ -19,7 +19,9 @@ services:
       - "8081:8080"
       - "50000:50000"
     environment:
-      # Saltea el asistente de instalacion para que el contenedor quede usable de una.
+      # El asistente inicial queda activo a proposito: es el que instala los plugins que
+      # el pipeline necesita (Docker, Pipeline, el de cobertura). Saltearlo dejaria un
+      # Jenkins que arranca pero no puede correr el Jenkinsfile.
       JAVA_OPTS: -Djenkins.install.runSetupWizard=true
     volumes:
       - jenkins-home:/var/jenkins_home

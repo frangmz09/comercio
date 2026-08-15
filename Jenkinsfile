@@ -70,7 +70,13 @@ pipeline {
                 expression { return env.SONAR_TOKEN?.trim() }
             }
             steps {
-                sh './mvnw -B sonar:sonar'
+                // Marca el build como UNSTABLE en vez de FAILURE, igual que el
+                // continue-on-error del workflow de Actions: el analisis es un informe y
+                // no una compuerta, pero tiene que verse cuando no corre. Sin esto, una
+                // caida de SonarCloud dejaria en rojo un build cuyos tests pasaron.
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh './mvnw -B sonar:sonar'
+                }
             }
         }
 
