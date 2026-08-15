@@ -94,11 +94,17 @@ Prometheus y Grafana— se levanta local con un comando.
 Un recorrido rápido sin salir de la terminal:
 
 ```bash
-# Los productos cargados
+# Consultar es público: no hace falta token
 curl https://comercio-core.onrender.com/api/v1/productos
+
+# Modificar sí. Sin el header Authorization la respuesta es 401.
+TOKEN=$(curl -s -X POST https://comercio-core.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | grep -o '"token":"[^"]*' | cut -d'"' -f4)
 
 # Una salida mayor al stock se rechaza con 409: nunca queda negativo
 curl -X POST https://comercio-core.onrender.com/api/v1/stock/movimientos \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","tipo":"SALIDA","cantidad":99999,"motivo":"prueba"}'
 ```
@@ -195,47 +201,60 @@ Todos los errores tienen la misma forma, sin importar dónde se originaron:
 ### Un flujo completo
 
 ```bash
+# 0. El token. Todo lo que modifica estado lo necesita; las consultas no.
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}' | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
 # 1. Producto, lista de precios y punto de venta
 curl -X POST http://localhost:8080/api/v1/productos \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"sku":"ALM-001","nombre":"Fideos 500g","categoria":"Almacén","unidad":"unidad"}'
 
 curl -X POST http://localhost:8080/api/v1/listas-precio \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"codigo":"MINORISTA","nombre":"Minorista"}'
 
 curl -X POST http://localhost:8080/api/v1/puntos-venta \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"numero":1,"nombre":"Caja 1"}'
 
 # 2. Su precio y su stock
 curl -X POST http://localhost:8080/api/v1/listas-precio/{listaId}/precios \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","monto":1250.00}'
 
 curl -X POST http://localhost:8080/api/v1/stock/movimientos \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","tipo":"ENTRADA","cantidad":100,"motivo":"compra a proveedor"}'
 
 # 3. Una venta. La clave la genera el cliente para poder reintentar sin duplicar.
 curl -X POST http://localhost:8080/api/v1/ventas \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: caja-1-20260813-000417" \
   -d '{"listaPrecioId":"{listaId}","puntoVentaId":"{pvId}","lineas":[{"productoId":"{productoId}","cantidad":3}]}'
 
 # 4. Repetir el paso 3 con la misma clave devuelve la MISMA venta y no descuenta de nuevo
 
-# 5. El stock bajó a 97 y el reporte ya refleja la venta
+# 5. El stock bajó a 97 y el reporte ya refleja la venta. Consultar no lleva token.
 curl http://localhost:8080/api/v1/stock/{productoId}
 curl http://localhost:8082/api/v1/reportes/ventas-diarias
 
 # 6. Una salida mayor al saldo se rechaza con 409 — el stock nunca queda negativo
 curl -X POST http://localhost:8080/api/v1/stock/movimientos \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"productoId":"{productoId}","tipo":"SALIDA","cantidad":99999,"motivo":"venta"}'
 
 # 7. La nota de crédito devuelve la mercadería y anula la venta
 curl -X POST http://localhost:8080/api/v1/ventas/{ventaId}/nota-credito \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"puntoVentaId":"{pvId}","motivo":"devolución del cliente"}'
 ```
@@ -338,8 +357,8 @@ Los que importan no son los del CRUD:
 
 ## Integración continua
 
-GitHub Actions corre en cada push: build, tests con Testcontainers, cobertura JaCoCo y
-análisis de SonarCloud.
+GitHub Actions corre en cada pull request y en cada push a `main`: build, tests con
+Testcontainers, cobertura JaCoCo y análisis de SonarCloud.
 
 El repositorio incluye además un `Jenkinsfile` con las mismas etapas y un
 `docker-compose.jenkins.yml` para levantar un Jenkins local y ejecutarlo:
@@ -347,6 +366,10 @@ El repositorio incluye además un `Jenkinsfile` con las mismas etapas y un
 ```bash
 docker compose -f docker-compose.jenkins.yml up
 ```
+
+Cómo se trabaja en el repositorio —ramas, commits, estrategia de merge, versionado y
+publicación de releases— está en [CONTRIBUTING.md](CONTRIBUTING.md). Los cambios de cada
+versión, en el [CHANGELOG.md](CHANGELOG.md).
 
 ## Alcance
 

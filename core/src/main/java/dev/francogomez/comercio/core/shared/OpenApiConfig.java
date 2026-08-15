@@ -58,8 +58,9 @@ public class OpenApiConfig {
                                 El dominio es sintético: es un proyecto de portfolio, sin relación con \
                                 ningún sistema de un empleador.
 
-                                **Estado:** catálogo de productos operativo. Precios, stock, ventas y \
-                                comprobantes se suman en las próximas iteraciones.""")
+                                Las consultas son públicas; las operaciones que modifican estado \
+                                requieren token. El servicio de reportes, que proyecta estos datos \
+                                desde eventos, corre aparte y no forma parte de esta demo.""")
                         .contact(new Contact()
                                 .name("Franco Gómez")
                                 .url("https://github.com/frangmz09/comercio"))

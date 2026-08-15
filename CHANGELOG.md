@@ -6,6 +6,21 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Corregido
+- Las carreras de concurrencia que la base rechaza devolvían `500` en lugar de `409`.
+  Dos altas simultáneas del mismo SKU, o dos notas de crédito sobre la misma venta,
+  terminaban en «error interno» cuando lo correcto es decirle al cliente que reintente.
+  Se distingue por `SQLState`: unicidad, exclusión y `CHECK` son `409`; un `NOT NULL` sin
+  valor sigue siendo `500`, porque eso sí es un defecto del código.
+- La portada de Swagger anunciaba que los precios, el stock, las ventas y los
+  comprobantes «se suman en las próximas iteraciones», cuando los cuatro ya estaban
+  operativos desde la `0.1.0`.
+- Los ejemplos de `curl` del README no mandaban el token. Desde la `0.2.0` las escrituras
+  lo exigen, así que quien los copiaba recibía un `401` en lugar del comportamiento que
+  el propio ejemplo documentaba.
+- El pipeline de Jenkins marcaba el build como fallido si el análisis de SonarCloud no
+  corría, en contra de la política que el proyecto declara y que el workflow de Actions
+  sí respeta. Ahora queda `UNSTABLE`: visible, pero sin teñir de rojo un build cuyos
+  tests pasaron.
 - Los reportes de ventas agrupan por fecha UTC, pero el rango por defecto se calculaba
   en la zona del servidor. En Argentina (UTC-3), entre las 21 y la medianoche el reporte
   devolvía el día anterior y las ventas del día quedaban fuera del rango.
@@ -13,6 +28,13 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   estaba escrito en varias líneas y Maven no recorta el valor de una propiedad.
 
 ### Cambiado
+- El fallo del análisis de SonarCloud deja un aviso en el resumen del run. Seguía sin
+  frenar el merge, pero `continue-on-error` lo dejaba mudo: el paso figuraba en verde
+  aunque el comando hubiera fallado.
+- La plantilla de pull request pide tachar los ítems que no vienen al caso en lugar de
+  marcarlos: un `[x]` que aclara «no aplica» se lee como que sí se hizo.
+- El README enlaza `CONTRIBUTING.md` y `CHANGELOG.md`, que hasta ahora no eran
+  alcanzables desde la puerta de entrada del repositorio.
 - Los roles en las reglas de autorización salen del enum `Rol` y no de literales
   repetidos, para que renombrar uno rompa la compilación en lugar de dejar una regla que
   no coincide con nada.
