@@ -4,6 +4,7 @@ import dev.francogomez.comercio.core.stock.StockDtos.MovimientoRequest;
 import dev.francogomez.comercio.core.stock.StockDtos.MovimientoResponse;
 import dev.francogomez.comercio.core.stock.StockDtos.SaldoResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -33,6 +34,10 @@ public class StockController {
 
     @PostMapping("/movimientos")
     @Operation(summary = "Registrar un movimiento de stock (entrada, salida o ajuste)")
+    @ApiResponse(responseCode = "201", description = "Movimiento registrado y saldo actualizado")
+    @ApiResponse(responseCode = "404", description = "No existe un producto con ese id")
+    @ApiResponse(responseCode = "409",
+            description = "El movimiento dejaría el saldo en negativo, o chocó con otro simultáneo")
     public ResponseEntity<MovimientoResponse> registrar(@Valid @RequestBody MovimientoRequest request) {
         MovimientoStock movimiento = service.registrar(
                 request.productoId(), request.tipo(), request.cantidad(),
@@ -42,12 +47,16 @@ public class StockController {
 
     @GetMapping("/{productoId}")
     @Operation(summary = "Saldo actual de un producto")
+    @ApiResponse(responseCode = "200", description = "El saldo del producto")
+    @ApiResponse(responseCode = "404", description = "No existe un producto con ese id")
     public SaldoResponse saldo(@PathVariable UUID productoId) {
         return new SaldoResponse(productoId, service.saldoDe(productoId));
     }
 
     @GetMapping("/{productoId}/movimientos")
     @Operation(summary = "Historial de movimientos de un producto, del más reciente al más viejo")
+    @ApiResponse(responseCode = "200", description = "Los movimientos del producto, paginados")
+    @ApiResponse(responseCode = "404", description = "No existe un producto con ese id")
     public Page<MovimientoResponse> movimientos(@PathVariable UUID productoId,
                                                 @PageableDefault(size = 20) Pageable pageable) {
         return service.movimientosDe(productoId, pageable).map(MovimientoResponse::from);

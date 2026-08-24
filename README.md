@@ -87,6 +87,18 @@ producto, una lista de precios y un punto de venta ya cargados para arrancar sin
 > gratuita que se duerme tras 15 minutos sin tráfico; el contenedor tiene que volver a
 > levantar. Después responde normal.
 
+**Para probar desde Swagger UI**, en este orden:
+
+1. `POST /auth/login` con `admin` / `admin123` — el cuerpo ya viene completo.
+2. Copiá el valor de `token` y pegalo en el botón **Authorize**, arriba a la derecha.
+   Va solo el token: Swagger agrega el `Bearer` por su cuenta. Dura una hora.
+3. Las entidades dependen unas de otras, así que el orden importa:
+   **producto → lista de precios → precio → punto de venta → entrada de stock → venta.**
+   Cada paso devuelve un `id` que se pega en el siguiente.
+
+Los cuerpos de ejemplo traen valores válidos en todos los campos, salvo los ids, que
+salen de los pasos anteriores. Los `GET` no piden token.
+
 Ahí solo vive `core`. `reportes` necesita Kafka, y no hay un Kafka gestionado gratuito
 que se sostenga en el tiempo, así que el sistema completo —los dos servicios, Kafka,
 Prometheus y Grafana— se levanta local con un comando.
@@ -139,7 +151,10 @@ curl -X POST https://comercio-core.onrender.com/api/v1/auth/login \
 ```
 
 Devuelve un JWT que viaja en `Authorization: Bearer <token>`. En Swagger UI alcanza con
-pegarlo una vez en el botón **Authorize**.
+pegarlo una vez en el botón **Authorize**, sin el prefijo `Bearer` —lo agrega Swagger—.
+
+Cuando una petición no autentica, el 401 dice cuál de los tres casos fue: falta el
+token, venció, o está mal armado. Son problemas distintos y se arreglan distinto.
 
 | Usuario | Contraseña | Rol | Puede |
 |---|---|---|---|

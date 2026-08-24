@@ -2,6 +2,7 @@ package dev.francogomez.comercio.core.auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -14,6 +15,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.emptyString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,6 +37,9 @@ class AutenticacionIT {
 
     @Autowired
     private JwtService jwtService;
+
+    @Value("${comercio.jwt.secret}")
+    private String secreto;
 
     @Test
     void loginConCredencialesValidasDevuelveUnToken() throws Exception {
@@ -142,13 +147,52 @@ class AutenticacionIT {
     }
 
     @Test
-    void unTokenVencidoNoAutentica() {
-        // La vigencia se valida en el propio servicio: emitir con vigencia negativa
-        // produce un token ya expirado, sin tener que esperar una hora en el test.
-        JwtService expirado = new JwtService("secreto-de-prueba-con-mas-de-32-caracteres", -1);
-        String token = expirado.emitirPara(new Usuario("admin", "irrelevante", Rol.ADMIN));
+    void unTokenVencidoSeDistingueDeUnoInvalido() {
+        assertThat(jwtService.verificar(tokenVencido()))
+                .isInstanceOf(JwtService.Verificacion.Vencido.class);
+        assertThat(jwtService.verificar("no-es-un-token"))
+                .isInstanceOf(JwtService.Verificacion.Invalido.class);
+    }
 
-        org.assertj.core.api.Assertions.assertThat(jwtService.validar(token)).isEmpty();
+    /**
+     * Emitir con vigencia negativa produce un token ya expirado, sin esperar una hora.
+     *
+     * <p>Firma con el mismo secreto que la aplicación a propósito: con otro, lo que
+     * falla es la verificación de la firma y el token nunca llega a evaluarse por
+     * vigencia, con lo cual el caso que se quiere probar no se prueba.
+     */
+    private String tokenVencido() {
+        return new JwtService(secreto, -1).emitirPara(new Usuario("admin", "irrelevante", Rol.ADMIN));
+    }
+
+    /**
+     * Los tres motivos por los que una petición no autentica se responden distinto: el
+     * 401 tiene que decir si falta el token, si venció o si está mal armado, porque cada
+     * uno se arregla de otra manera.
+     */
+    @Test
+    void elMensajeDel401DiceCualDeLosTresCasosOcurrio() throws Exception {
+        String cuerpo = """
+                {"sku":"X-001","nombre":"n","categoria":"c","unidad":"unidad"}
+                """;
+
+        mockMvc.perform(post("/api/v1/productos")
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(RechazoDeToken.AUSENTE.getMensaje()));
+
+        mockMvc.perform(post("/api/v1/productos")
+                        .header("Authorization", "Bearer " + tokenVencido())
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(RechazoDeToken.VENCIDO.getMensaje()));
+
+        // El error clásico de Swagger UI: pegar el token con el prefijo ya incluido.
+        mockMvc.perform(post("/api/v1/productos")
+                        .header("Authorization", "Bearer Bearer " + tokenDe("admin", "admin123"))
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(RechazoDeToken.INVALIDO.getMensaje()));
     }
 
     private String tokenDe(String username, String password) throws Exception {

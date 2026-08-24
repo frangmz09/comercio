@@ -1,5 +1,6 @@
 package dev.francogomez.comercio.core.shared;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import dev.francogomez.comercio.core.auth.CredencialesInvalidasException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -17,9 +18,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Traduce las excepciones de dominio y de framework a {@link ApiError}. Todo error que
@@ -59,9 +62,44 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    /**
+     * El cuerpo no se pudo leer. Hay dos casos muy distintos acá y conviene separarlos:
+     * el JSON está roto, o el JSON está bien pero un valor no entra en el tipo del campo.
+     * El segundo es el que se ve todo el tiempo desde Swagger UI, que rellena los UUID
+     * con el literal {@code "string"}; decirle "no es JSON válido" manda a buscar el
+     * problema al lugar equivocado.
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiError> handleUnreadable(HttpServletRequest req) {
-        return build(HttpStatus.BAD_REQUEST, "El cuerpo de la petición no es JSON válido", req);
+    public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, mensajeDe(ex), req);
+    }
+
+    private static String mensajeDe(HttpMessageNotReadableException ex) {
+        if (!(ex.getCause() instanceof InvalidFormatException formato)) {
+            return "El cuerpo de la petición no es JSON válido";
+        }
+        return "El campo '%s' no admite el valor %s: se esperaba %s".formatted(
+                campoDe(formato),
+                formato.getValue(),
+                tipoEsperadoDe(formato));
+    }
+
+    /** Ruta del campo tal como viaja en el JSON, con los niveles separados por punto. */
+    private static String campoDe(InvalidFormatException ex) {
+        return ex.getPath().stream()
+                .map(referencia -> referencia.getFieldName() != null
+                        ? referencia.getFieldName()
+                        : "[%d]".formatted(referencia.getIndex()))
+                .collect(Collectors.joining("."));
+    }
+
+    /** Para un enum, los valores admitidos; para el resto, el nombre del tipo. */
+    private static String tipoEsperadoDe(InvalidFormatException ex) {
+        Class<?> tipo = ex.getTargetType();
+        if (tipo != null && tipo.isEnum()) {
+            return "uno de " + Arrays.toString(tipo.getEnumConstants());
+        }
+        return tipo != null ? tipo.getSimpleName() : "otro tipo";
     }
 
     /**

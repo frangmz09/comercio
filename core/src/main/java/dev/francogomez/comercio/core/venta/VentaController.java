@@ -7,6 +7,7 @@ import dev.francogomez.comercio.core.venta.VentaDtos.VentaRequest;
 import dev.francogomez.comercio.core.venta.VentaDtos.VentaResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -49,6 +50,15 @@ public class VentaController {
                     header `Idempotency-Key`: si el mismo pedido llega dos veces con la misma
                     clave, la segunda devuelve la venta ya registrada en lugar de cobrar de
                     nuevo.""")
+    @ApiResponse(responseCode = "201",
+            description = "Venta registrada con su factura. Un reintento con la misma clave "
+                    + "devuelve esta misma venta, sin registrar otra")
+    @ApiResponse(responseCode = "404",
+            description = "No existe la lista, el punto de venta o alguno de los productos, "
+                    + "o el producto no tiene precio vigente en esa lista")
+    @ApiResponse(responseCode = "409",
+            description = "Stock insuficiente, un producto repetido en dos líneas, o la clave "
+                    + "de idempotencia ya se usó para una venta distinta")
     public ResponseEntity<VentaResponse> registrar(
             @Parameter(description = "Clave única generada por el cliente para poder reintentar sin duplicar",
                     required = true, example = "caja-3-20260813-000417")
@@ -66,6 +76,9 @@ public class VentaController {
                     Devuelve la mercadería al stock y deja el comprobante apuntando a la factura
                     original. No borra ni modifica nada de la venta: la factura sigue existiendo
                     tal como se emitió.""")
+    @ApiResponse(responseCode = "201", description = "Nota de crédito emitida y stock restituido")
+    @ApiResponse(responseCode = "404", description = "No existe la venta o el punto de venta")
+    @ApiResponse(responseCode = "409", description = "La venta ya está anulada")
     public ResponseEntity<ComprobanteResponse> emitirNotaCredito(
             @PathVariable UUID id,
             @Valid @RequestBody NotaCreditoRequest request) {
@@ -76,18 +89,23 @@ public class VentaController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar una venta por id, con sus comprobantes")
+    @ApiResponse(responseCode = "200", description = "La venta con sus comprobantes")
+    @ApiResponse(responseCode = "404", description = "No existe una venta con ese id")
     public VentaResponse buscar(@PathVariable UUID id) {
         return VentaResponse.from(service.buscar(id), service.comprobantesDe(id));
     }
 
     @GetMapping("/{id}/comprobantes")
     @Operation(summary = "Comprobantes emitidos para una venta")
+    @ApiResponse(responseCode = "200", description = "Los comprobantes de esa venta")
+    @ApiResponse(responseCode = "404", description = "No existe una venta con ese id")
     public List<ComprobanteResponse> comprobantes(@PathVariable UUID id) {
         return service.comprobantesDe(id).stream().map(ComprobanteResponse::from).toList();
     }
 
     @GetMapping
     @Operation(summary = "Listar ventas")
+    @ApiResponse(responseCode = "200", description = "Las ventas registradas, paginadas")
     public Page<VentaResponse> listar(@PageableDefault(size = 20) Pageable pageable) {
         return service.listar(pageable).map(v -> VentaResponse.from(v, List.of()));
     }

@@ -1,5 +1,6 @@
 package dev.francogomez.comercio.core.shared;
 
+import io.swagger.v3.core.converter.ModelConverters;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
@@ -35,7 +36,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 // Habilita el botón Authorize de Swagger UI: se pega el token una vez y
                 // queda aplicado a todas las llamadas, sin copiarlo request por request.
-                .components(new Components().addSecuritySchemes(BEARER,
+                .components(componentes().addSecuritySchemes(BEARER,
                         new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
@@ -69,5 +70,19 @@ public class OpenApiConfig {
                                 .url("https://github.com/frangmz09/comercio/blob/main/LICENSE")))
                 .servers(List.of(
                         new Server().url("/").description("Servidor actual")));
+    }
+
+    /**
+     * Registra {@link ApiError} en el documento. Ningún controller lo devuelve —sale del
+     * {@code @RestControllerAdvice}, que springdoc no escanea—, así que sin esto las
+     * respuestas de error quedarían apuntando a un schema inexistente.
+     */
+    private static Components componentes() {
+        Components components = new Components();
+        ModelConverters.getInstance()
+                .readAllAsResolvedSchema(ApiError.class)
+                .referencedSchemas
+                .forEach(components::addSchemas);
+        return components;
     }
 }

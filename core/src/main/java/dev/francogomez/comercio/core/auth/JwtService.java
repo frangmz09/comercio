@@ -1,6 +1,7 @@
 package dev.francogomez.comercio.core.auth;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -12,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
-import java.util.Optional;
+
 
 /**
  * Emite y valida los tokens. Son stateless: el servidor no guarda sesiones, y toda la
@@ -54,12 +55,14 @@ public class JwtService {
     }
 
     /**
-     * Devuelve los datos del token solo si la firma es válida y no expiró. Cualquier
-     * problema —firma adulterada, token vencido, formato roto— se traduce en un
-     * {@code Optional} vacío: para el que llama, un token inválido y uno ausente son lo
-     * mismo, y no hay que distinguirlos en el filtro.
+     * Verifica firma y vigencia.
+     *
+     * <p>El resultado distingue vencido de inválido en lugar de colapsar los dos en un
+     * {@code Optional} vacío, porque para quien consume la API son problemas distintos:
+     * el token vencido se arregla pidiendo otro, el inválido revisando qué se está
+     * mandando en el header. Un 401 que no lo aclara deja al cliente adivinando.
      */
-    public Optional<DatosToken> validar(String token) {
+    public Verificacion verificar(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(clave)
@@ -67,11 +70,14 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            return Optional.of(new DatosToken(
+            return new Verificacion.Valido(new DatosToken(
                     claims.getSubject(),
                     Rol.valueOf(claims.get("rol", String.class))));
+        } catch (ExpiredJwtException e) {
+            return new Verificacion.Vencido();
         } catch (JwtException | IllegalArgumentException e) {
-            return Optional.empty();
+            // Firma adulterada, formato roto, o un rol que dejó de existir en el enum.
+            return new Verificacion.Invalido();
         }
     }
 
@@ -80,5 +86,22 @@ public class JwtService {
     }
 
     public record DatosToken(String username, Rol rol) {
+    }
+
+    /**
+     * Resultado de verificar un token. Sellada a propósito: son los tres casos posibles
+     * y el filtro los cubre con un switch exhaustivo, sin rama por defecto que tape un
+     * caso nuevo si mañana se agrega uno.
+     */
+    public sealed interface Verificacion {
+
+        record Valido(DatosToken datos) implements Verificacion {
+        }
+
+        record Vencido() implements Verificacion {
+        }
+
+        record Invalido() implements Verificacion {
+        }
     }
 }

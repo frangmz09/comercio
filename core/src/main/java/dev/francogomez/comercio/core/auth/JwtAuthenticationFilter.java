@@ -22,9 +22,17 @@ import java.util.List;
  * <p>Un token ausente o inválido no corta la cadena: simplemente no autentica y sigue.
  * Quien decide si eso alcanza es la configuración de seguridad, no este filtro — así las
  * rutas públicas siguen funcionando sin tener que enumerarlas también acá.
+ *
+ * <p>Lo que sí deja es el motivo del rechazo como atributo del request, para que el
+ * punto de entrada de seguridad pueda armar un 401 que diga qué pasó. Va por atributo y
+ * no por excepción justamente porque el filtro no decide: una ruta pública con un token
+ * vencido tiene que seguir respondiendo 200.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    /** Clave del atributo donde queda el {@link RechazoDeToken}, si hubo uno. */
+    public static final String ATRIBUTO_RECHAZO = "comercio.rechazoDeToken";
 
     private static final String HEADER = "Authorization";
     private static final String PREFIJO = "Bearer ";
@@ -40,11 +48,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        tokenDe(request)
-                .flatMap(jwtService::validar)
-                .ifPresent(datos -> autenticar(datos, request));
+        tokenDe(request).ifPresentOrElse(
+                token -> resolver(token, request),
+                () -> request.setAttribute(ATRIBUTO_RECHAZO, RechazoDeToken.AUSENTE));
 
         filterChain.doFilter(request, response);
+    }
+
+    private void resolver(String token, HttpServletRequest request) {
+        switch (jwtService.verificar(token)) {
+            case JwtService.Verificacion.Valido v -> autenticar(v.datos(), request);
+            case JwtService.Verificacion.Vencido ignorado ->
+                    request.setAttribute(ATRIBUTO_RECHAZO, RechazoDeToken.VENCIDO);
+            case JwtService.Verificacion.Invalido ignorado ->
+                    request.setAttribute(ATRIBUTO_RECHAZO, RechazoDeToken.INVALIDO);
+        }
     }
 
     private java.util.Optional<String> tokenDe(HttpServletRequest request) {
