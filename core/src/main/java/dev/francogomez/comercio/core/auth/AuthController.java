@@ -1,6 +1,8 @@
 package dev.francogomez.comercio.core.auth;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -34,6 +36,8 @@ public class AuthController {
                     En la demo pública hay dos usuarios cargados: `admin` / `admin123` con rol
                     ADMIN, y `vendedor` / `vendedor123` con rol VENDEDOR. Consultar no requiere
                     token; modificar sí.""")
+    @ApiResponse(responseCode = "200", description = "Token emitido")
+    @ApiResponse(responseCode = "401", description = "Usuario o contraseña incorrectos")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return usuarios.findByUsernameAndActivoTrue(request.username())
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPassword()))
@@ -49,8 +53,8 @@ public class AuthController {
     }
 
     public record LoginRequest(
-            @NotBlank String username,
-            @NotBlank String password) {
+            @NotBlank @Schema(example = "admin") String username,
+            @NotBlank @Schema(example = "admin123") String password) {
     }
 
     public record LoginResponse(

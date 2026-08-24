@@ -5,6 +5,7 @@ import dev.francogomez.comercio.core.precio.PrecioDtos.ListaPrecioResponse;
 import dev.francogomez.comercio.core.precio.PrecioDtos.PrecioRequest;
 import dev.francogomez.comercio.core.precio.PrecioDtos.PrecioResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -39,6 +40,8 @@ public class PrecioController {
 
     @PostMapping
     @Operation(summary = "Crear una lista de precios")
+    @ApiResponse(responseCode = "201", description = "Lista creada")
+    @ApiResponse(responseCode = "409", description = "Ya existe una lista con ese código")
     public ResponseEntity<ListaPrecioResponse> crearLista(@Valid @RequestBody ListaPrecioRequest request) {
         ListaPrecio lista = listaService.crear(request.codigo(), request.nombre());
         return ResponseEntity.created(URI.create("/api/v1/listas-precio/" + lista.getId()))
@@ -47,6 +50,7 @@ public class PrecioController {
 
     @GetMapping
     @Operation(summary = "Listar listas de precios")
+    @ApiResponse(responseCode = "200", description = "Las listas de precios, paginadas")
     public Page<ListaPrecioResponse> listarListas(
             @RequestParam(defaultValue = "false") boolean incluirInactivas,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -55,12 +59,18 @@ public class PrecioController {
 
     @GetMapping("/{listaId}")
     @Operation(summary = "Buscar una lista de precios por id")
+    @ApiResponse(responseCode = "200", description = "La lista pedida")
+    @ApiResponse(responseCode = "404", description = "No existe una lista con ese id")
     public ListaPrecioResponse buscarLista(@PathVariable UUID listaId) {
         return ListaPrecioResponse.from(listaService.buscar(listaId));
     }
 
     @PostMapping("/{listaId}/precios")
     @Operation(summary = "Asignar un precio, cerrando la vigencia del anterior")
+    @ApiResponse(responseCode = "201", description = "Precio asignado y vigencia anterior cerrada")
+    @ApiResponse(responseCode = "404", description = "No existe el producto o la lista")
+    @ApiResponse(responseCode = "409",
+            description = "La vigencia se solapa con un precio ya cargado para ese producto")
     public ResponseEntity<PrecioResponse> asignarPrecio(@PathVariable UUID listaId,
                                                         @Valid @RequestBody PrecioRequest request) {
         Instant desde = request.vigenciaDesde() != null ? request.vigenciaDesde() : Instant.now();
@@ -71,6 +81,9 @@ public class PrecioController {
 
     @GetMapping("/{listaId}/precios/vigente")
     @Operation(summary = "Precio vigente de un producto en una fecha (por defecto, ahora)")
+    @ApiResponse(responseCode = "200", description = "El precio que regía en ese momento")
+    @ApiResponse(responseCode = "404",
+            description = "No existe el producto o la lista, o no había precio vigente en esa fecha")
     public PrecioResponse precioVigente(@PathVariable UUID listaId,
                                         @RequestParam UUID productoId,
                                         @RequestParam(required = false) Instant momento) {
@@ -80,6 +93,8 @@ public class PrecioController {
 
     @GetMapping("/{listaId}/precios/historial")
     @Operation(summary = "Historial completo de precios de un producto en la lista")
+    @ApiResponse(responseCode = "200", description = "Todos los precios del producto, vigentes y cerrados")
+    @ApiResponse(responseCode = "404", description = "No existe el producto o la lista")
     public List<PrecioResponse> historial(@PathVariable UUID listaId, @RequestParam UUID productoId) {
         return precioService.historial(productoId, listaId).stream().map(PrecioResponse::from).toList();
     }

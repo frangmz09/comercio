@@ -95,11 +95,19 @@ public class SecurityConfig {
      * Sin esto Spring responde con una página HTML de error. Devolver el mismo
      * {@link ApiError} que el resto de la API vale la pena: un cliente que ya sabe
      * parsear los errores no necesita un caso especial para el 401.
+     *
+     * <p>El mensaje sale del motivo que dejó el filtro, así que un token vencido y uno
+     * mal pegado no se responden igual.
      */
     private AuthenticationEntryPoint entryPoint() {
         return (request, response, authException) ->
-                escribirError(request, response, HttpStatus.UNAUTHORIZED,
-                        "Se requiere autenticación: enviá el token en el header Authorization");
+                escribirError(request, response, HttpStatus.UNAUTHORIZED, motivoDe(request).getMensaje());
+    }
+
+    private static RechazoDeToken motivoDe(HttpServletRequest request) {
+        return request.getAttribute(JwtAuthenticationFilter.ATRIBUTO_RECHAZO) instanceof RechazoDeToken rechazo
+                ? rechazo
+                : RechazoDeToken.AUSENTE;
     }
 
     private AccessDeniedHandler accessDeniedHandler() {

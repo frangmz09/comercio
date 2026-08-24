@@ -1,15 +1,22 @@
 package dev.francogomez.comercio.core.shared;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import dev.francogomez.comercio.core.stock.TipoMovimiento;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
+import java.io.InputStream;
 import java.sql.SQLException;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -76,4 +83,57 @@ class GlobalExceptionHandlerTest {
         assertThat(optimista.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(pesimista.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
+
+    @Test
+    @DisplayName("un UUID mal tipado nombra el campo en vez de culpar al JSON entero")
+    void unValorQueNoEntraEnElTipoNombraElCampo() {
+        var causa = InvalidFormatException.from(null, "no es un UUID", "string", UUID.class);
+        causa.prependPath(Object.class, "productoId");
+
+        var respuesta = handler.handleUnreadable(
+                new HttpMessageNotReadableException("cuerpo ilegible", causa, ENTRADA_VACIA), request);
+
+        assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(respuesta.getBody()).isNotNull();
+        assertThat(respuesta.getBody().message())
+                .contains("productoId")
+                .contains("string")
+                .contains("UUID");
+    }
+
+    @Test
+    @DisplayName("un enum desconocido enumera los valores admitidos")
+    void unEnumDesconocidoListaLosValoresAdmitidos() {
+        var causa = InvalidFormatException.from(null, "no es un tipo", "COMPRA", TipoMovimiento.class);
+        causa.prependPath(Object.class, "tipo");
+
+        var respuesta = handler.handleUnreadable(
+                new HttpMessageNotReadableException("cuerpo ilegible", causa, ENTRADA_VACIA), request);
+
+        assertThat(respuesta.getBody()).isNotNull();
+        assertThat(respuesta.getBody().message()).contains("ENTRADA", "SALIDA", "AJUSTE");
+    }
+
+    @Test
+    @DisplayName("un JSON realmente roto sí se reporta como JSON inválido")
+    void unJsonRotoSeReportaComoTal() {
+        var respuesta = handler.handleUnreadable(
+                new HttpMessageNotReadableException("llave sin cerrar", ENTRADA_VACIA), request);
+
+        assertThat(respuesta.getBody()).isNotNull();
+        assertThat(respuesta.getBody().message()).isEqualTo("El cuerpo de la petición no es JSON válido");
+    }
+
+    /** El constructor de la excepción exige un HttpInputMessage; para el test da igual cuál. */
+    private static final HttpInputMessage ENTRADA_VACIA = new HttpInputMessage() {
+        @Override
+        public InputStream getBody() {
+            return InputStream.nullInputStream();
+        }
+
+        @Override
+        public HttpHeaders getHeaders() {
+            return HttpHeaders.EMPTY;
+        }
+    };
 }

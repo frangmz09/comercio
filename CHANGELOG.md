@@ -5,7 +5,36 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Agregado
+- El documento OpenAPI declara el contrato de errores completo: `400`, `401`, `403`,
+  `404`, `409` y `500`, cada uno con el `ApiError` que la API devuelve. Antes las 23
+  operaciones anunciaban un único `200`, lo que dejaba invisible en Swagger justamente
+  la parte más trabajada del proyecto —los `409` de concurrencia y de stock—.
+- Todos los campos de los cuerpos de petición traen ejemplos válidos. Sin ellos Swagger
+  UI rellenaba los `UUID` con el literal `"string"` y cualquier escritura probada desde
+  «Try it out» fallaba con un `400`.
+- `ContratoOpenApiIT` verifica contra la aplicación levantada que lo documentado siga
+  coincidiendo con lo que la API hace: que cada operación declare su código de éxito real
+  y uno solo, que las escrituras declaren `401`, que las consultas no figuren como
+  protegidas, y que todo cuerpo de petición tenga ejemplos.
+
 ### Corregido
+- El `401` no distinguía entre token ausente, vencido y mal formado. Los tres se arreglan
+  de manera distinta —volver a loguearse, revisar qué se pegó en `Authorize`— y un
+  mensaje único obligaba a adivinar. `JwtService.verificar` ahora devuelve un resultado
+  tipado y el mensaje sale de ahí.
+- El `400` por un valor que no entra en el tipo del campo respondía «el cuerpo de la
+  petición no es JSON válido», cuando el JSON era válido y el problema era un `UUID` o un
+  enum mal escrito. Ahora nombra el campo, el valor recibido y lo que se esperaba; para
+  un enum, enumera los valores admitidos.
+- Las consultas figuraban en Swagger con el candado de autenticación aunque `GET` sea
+  público, y el `login` también, pese a ser el endpoint que emite el token.
+- `MovimientoRequest` publicaba `cantidadDistintaDeCero` como si fuera un campo del
+  cuerpo. Es el getter de la validación `@AssertTrue`, que springdoc tomaba por un dato.
+- `AutenticacionIT` daba por probado el vencimiento del token pero firmaba con un secreto
+  distinto al de la aplicación: lo que fallaba era la verificación de la firma y el token
+  nunca llegaba a evaluarse por vigencia. El caso quedaba sin cubrir.
+
 - Las carreras de concurrencia que la base rechaza devolvían `500` en lugar de `409`.
   Dos altas simultáneas del mismo SKU, o dos notas de crédito sobre la misma venta,
   terminaban en «error interno» cuando lo correcto es decirle al cliente que reintente.

@@ -1,6 +1,8 @@
 package dev.francogomez.comercio.core.comprobante;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -34,6 +36,8 @@ public class ComprobanteController {
     @PostMapping("/puntos-venta")
     @Operation(summary = "Crear un punto de venta",
             description = "Cada punto de venta numera sus comprobantes por separado.")
+    @ApiResponse(responseCode = "201", description = "Punto de venta creado")
+    @ApiResponse(responseCode = "409", description = "Ya existe un punto de venta con ese número")
     public ResponseEntity<PuntoVentaResponse> crearPuntoVenta(@Valid @RequestBody PuntoVentaRequest request) {
         PuntoVenta pv = service.crearPuntoVenta(request.numero(), request.nombre());
         return ResponseEntity.created(URI.create("/api/v1/puntos-venta/" + pv.getId()))
@@ -42,13 +46,20 @@ public class ComprobanteController {
 
     @GetMapping("/comprobantes/{id}")
     @Operation(summary = "Buscar un comprobante por id")
+    @ApiResponse(responseCode = "200", description = "El comprobante pedido")
+    @ApiResponse(responseCode = "404", description = "No existe un comprobante con ese id")
     public ComprobanteDetalle buscar(@PathVariable UUID id) {
         return ComprobanteDetalle.from(service.buscar(id));
     }
 
     public record PuntoVentaRequest(
-            @NotNull @Min(value = 1, message = "el número debe ser positivo") Integer numero,
-            @NotBlank @Size(max = 100) String nombre) {
+            @NotNull @Min(value = 1, message = "el número debe ser positivo")
+            @Schema(description = "Número que encabeza los comprobantes de esta caja", example = "1")
+            Integer numero,
+
+            @NotBlank @Size(max = 100)
+            @Schema(example = "Caja principal")
+            String nombre) {
     }
 
     public record PuntoVentaResponse(UUID id, int numero, String nombre, boolean activo) {
