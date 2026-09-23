@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,7 +59,7 @@ public class StockController {
     @ApiResponse(responseCode = "200", description = "Los movimientos del producto, paginados")
     @ApiResponse(responseCode = "404", description = "No existe un producto con ese id")
     public Page<MovimientoResponse> movimientos(@PathVariable UUID productoId,
-                                                @PageableDefault(size = 20) Pageable pageable) {
+                                                @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
         return service.movimientosDe(productoId, pageable).map(MovimientoResponse::from);
     }
 }

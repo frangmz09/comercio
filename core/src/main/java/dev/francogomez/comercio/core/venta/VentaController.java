@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -106,7 +107,7 @@ public class VentaController {
     @GetMapping
     @Operation(summary = "Listar ventas")
     @ApiResponse(responseCode = "200", description = "Las ventas registradas, paginadas")
-    public Page<VentaResponse> listar(@PageableDefault(size = 20) Pageable pageable) {
+    public Page<VentaResponse> listar(@ParameterObject @PageableDefault(size = 20) Pageable pageable) {
         return service.listar(pageable).map(v -> VentaResponse.from(v, List.of()));
     }
 }

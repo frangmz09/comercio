@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,7 +54,7 @@ public class PrecioController {
     @ApiResponse(responseCode = "200", description = "Las listas de precios, paginadas")
     public Page<ListaPrecioResponse> listarListas(
             @RequestParam(defaultValue = "false") boolean incluirInactivas,
-            @PageableDefault(size = 20) Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
         return listaService.listar(incluirInactivas, pageable).map(ListaPrecioResponse::from);
     }
 
