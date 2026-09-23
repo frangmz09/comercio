@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -110,6 +111,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleHeaderFaltante(MissingRequestHeaderException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST,
                 "Falta el header obligatorio '%s'".formatted(ex.getHeaderName()), req);
+    }
+
+    /**
+     * Se pidió ordenar por un campo que la entidad no tiene. Swagger UI lo provoca con
+     * solo apretar Execute: rellena {@code sort} con el literal {@code "string"}.
+     */
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ApiError> handleOrdenInvalido(PropertyReferenceException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST,
+                "No se puede ordenar por '%s': no es un campo de %s".formatted(
+                        ex.getPropertyName(), ex.getType().getType().getSimpleName()), req);
     }
 
     /** Validaciones sobre parámetros y headers, que no pasan por el binding del body. */

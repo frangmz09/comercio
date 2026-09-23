@@ -94,6 +94,13 @@ class ProductoControllerIT {
     }
 
     @Test
+    void listarOrdenandoPorUnCampoInexistenteDevuelve400() throws Exception {
+        mockMvc.perform(get("/api/v1/productos").param("sort", "string"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("string")));
+    }
+
+    @Test
     void desactivarSacaElProductoDelListadoActivo() throws Exception {
         String body = """
                 {"sku":"ALM-003","nombre":"Yerba 1kg","categoria":"Almacén","unidad":"unidad"}

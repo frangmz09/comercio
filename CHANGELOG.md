@@ -55,6 +55,10 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   devolvía el día anterior y las ventas del día quedaban fuera del rango.
 - La cobertura no llegaba a SonarCloud: el valor de `sonar.coverage.jacoco.xmlReportPaths`
   estaba escrito en varias líneas y Maven no recorta el valor de una propiedad.
+- Ordenar un listado por un campo inexistente devolvía `500` en lugar de `400`. Swagger UI
+  lo provocaba con solo apretar Execute, porque presentaba la paginación como un objeto
+  JSON obligatorio con `sort: ["string"]`. Ahora el `400` nombra el campo, y `page`,
+  `size` y `sort` figuran en Swagger como parámetros sueltos y opcionales.
 
 ### Cambiado
 - El fallo del análisis de SonarCloud deja un aviso en el resumen del run. Seguía sin
