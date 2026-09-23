@@ -74,7 +74,6 @@ public class SeedDatosDemo {
         jdbc.update("""
                 INSERT INTO movimiento_stock (producto_id, tipo, cantidad, motivo)
                 VALUES (?, 'ENTRADA', 100, 'Stock inicial de la demo')""", PRODUCTO);
-        jdbc.update("""
-                INSERT INTO saldo_stock (producto_id, cantidad) VALUES (?, 100)""", PRODUCTO);
+        jdbc.update("INSERT INTO saldo_stock (producto_id, cantidad) VALUES (?, 100)", PRODUCTO);
     }
 }
