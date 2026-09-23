@@ -54,6 +54,8 @@ comercio:
   demo:
     # Crea admin/vendedor al arrancar si no existen. Se apaga en un sistema real.
     seed-usuarios: ${COMERCIO_DEMO_SEED_USUARIOS:true}
+    # Producto, lista, punto de venta y stock con los ids de los ejemplos de Swagger.
+    seed-datos: ${COMERCIO_DEMO_SEED_DATOS:true}
 
   outbox:
     enabled: true

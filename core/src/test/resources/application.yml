@@ -12,6 +12,8 @@ comercio:
   demo:
     # Los tests de autenticacion se apoyan en admin y vendedor ya creados.
     seed-usuarios: true
+    # Los datos de la demo alterarian listados y saldos que los tests arman desde cero.
+    seed-datos: false
 
   # El publisher del outbox queda apagado por defecto: la mayoria de los tests no tiene
   # nada que ver con Kafka y no hay razon para que dependan de un broker. Los que si lo

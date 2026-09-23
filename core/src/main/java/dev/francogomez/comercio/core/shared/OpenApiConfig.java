@@ -61,7 +61,12 @@ public class OpenApiConfig {
 
                                 Las consultas son públicas; las operaciones que modifican estado \
                                 requieren token. El servicio de reportes, que proyecta estos datos \
-                                desde eventos, corre aparte y no forma parte de esta demo.""")
+                                desde eventos, corre aparte y no forma parte de esta demo.
+
+                                La demo trae precargados un producto con precio y 100 unidades de \
+                                stock, una lista de precios y un punto de venta, con los mismos ids \
+                                que proponen los ejemplos: registrar una venta sale con Execute, sin \
+                                completar nada.""")
                         .contact(new Contact()
                                 .name("Franco Gómez")
                                 .url("https://github.com/frangmz09/comercio"))
