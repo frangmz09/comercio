@@ -80,8 +80,9 @@ Son eventualmente consistentes: una venta recién registrada tarda un instante e
 
 ### 👉 [comercio-core.onrender.com/swagger-ui](https://comercio-core.onrender.com/swagger-ui)
 
-La API transaccional está desplegada y se puede probar desde el navegador. Hay un
-producto, una lista de precios y un punto de venta ya cargados para arrancar sin trámite.
+La API transaccional está desplegada y se puede probar desde el navegador. Al arrancar
+carga un producto con precio y 100 unidades de stock, una lista de precios y un punto de
+venta, con los mismos ids que proponen los ejemplos de Swagger.
 
 > **El primer request puede tardar cerca de un minuto.** Corre sobre una instancia
 > gratuita que se duerme tras 15 minutos sin tráfico; el contenedor tiene que volver a
@@ -92,12 +93,12 @@ producto, una lista de precios y un punto de venta ya cargados para arrancar sin
 1. `POST /auth/login` con `admin` / `admin123` — el cuerpo ya viene completo.
 2. Copiá el valor de `token` y pegalo en el botón **Authorize**, arriba a la derecha.
    Va solo el token: Swagger agrega el `Bearer` por su cuenta. Dura una hora.
-3. Las entidades dependen unas de otras, así que el orden importa:
-   **producto → lista de precios → precio → punto de venta → entrada de stock → venta.**
-   Cada paso devuelve un `id` que se pega en el siguiente.
+3. `POST /ventas` → Execute. El cuerpo de ejemplo apunta a los datos precargados, así
+   que la venta sale sin completar nada, con su factura numerada.
 
-Los cuerpos de ejemplo traen valores válidos en todos los campos, salvo los ids, que
-salen de los pasos anteriores. Los `GET` no piden token.
+Para armar un circuito propio, las entidades dependen unas de otras:
+**producto → lista de precios → precio → punto de venta → entrada de stock → venta.**
+Cada paso devuelve un `id` que se pega en el siguiente. Los `GET` no piden token.
 
 Ahí solo vive `core`. `reportes` necesita Kafka, y no hay un Kafka gestionado gratuito
 que se sostenga en el tiempo, así que el sistema completo —los dos servicios, Kafka,

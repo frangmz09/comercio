@@ -17,6 +17,10 @@ proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
   coincidiendo con lo que la API hace: que cada operación declare su código de éxito real
   y uno solo, que las escrituras declaren `401`, que las consultas no figuren como
   protegidas, y que todo cuerpo de petición tenga ejemplos.
+- Datos de demo precargados al arrancar: un producto con precio y stock, una lista de
+  precios y un punto de venta, con los mismos ids que los ejemplos de Swagger. Registrar
+  una venta desde «Try it out» sale con solo apretar Execute. Se apaga con
+  `COMERCIO_DEMO_SEED_DATOS=false`.
 
 ### Corregido
 - El `401` no distinguía entre token ausente, vencido y mal formado. Los tres se arreglan
